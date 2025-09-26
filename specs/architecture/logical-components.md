@@ -1,156 +1,150 @@
 # Logical Components Architecture
 
-**Purpose**: High-level architectural components for [Project Name]
+**Purpose**: High-level architectural components for the Conversational AI Ideation App
 
-This document outlines the key logical components that comprise the system, reflecting the current architecture and design patterns.
+This document outlines the key logical components, primary flows, and interaction patterns for the MVP.
 
 ## Architecture Overview
 
-[Project Name] is a [brief description of the application type and primary purpose]. 
+The app enables conversational ideation (voice and text) and compiles those into a canonical JSON spec graph with generated Markdown/Mermaid views. All mutations—human or agent—flow through a single event lane for provenance and idempotency.
 
-**Primary Interface**: [Describe the main user interface - web app, mobile app, API, etc.]
+**Primary Interface**: Web app (Next.js). Voice via OpenAI Realtime (WebRTC) with barge‑in.
 
-The architecture is designed around [number] main flows:
+The architecture centers on 4 flows:
 
-1. **[Primary Flow Name]**: [Brief description of the main user/data flow]
-2. **[Secondary Flow Name]**: [Brief description of secondary flow]
+1. **Realtime Conversational Loop**: Browser ↔ OpenAI Realtime; partial transcripts → tool calls → SpecEvents
+2. **Spec Compilation**: Event validation/merge → nodes/edges/changelog → view generation (Markdown/Mermaid)
+3. **Realtime UI Updates**: Supabase WAL → Realtime push → selective re‑render
+4. **Sub‑agent Orchestration**: Background jobs (critique/research) → AgentEvents → same compiler lane
 
 ## Core Logical Components
 
-### 1. [Component Name] - **[Completion %]% Complete**
+### 1. VoiceConsole (UI)
+**Purpose**: Initiate/terminate voice sessions, show VU meter, transcript, and barge‑in controls
+**Assessment**: MVP; depends on ephemeral token endpoint
 
-**Purpose**: [Brief description of component purpose]
+#### Capabilities
+- Connects to `/api/realtime/session` to obtain ephemeral tokens
+- Streams audio and receives partial transcripts; displays TTS output
+- Triggers client‑side actions to submit SpecEvents to server
 
-**Assessment**: [Brief assessment of current state and any key considerations]
+### 2. SpecEventCompiler (Server)
+**Purpose**: Single entry point for all events; validates, merges, persists, and publishes
+**Assessment**: Critical path; must be idempotent and race‑safe
 
-#### [Sub-Component Name]
-- **Function**: [What this sub-component does]
-- **Capabilities**:
-  - [Key capability 1]
-  - [Key capability 2]
-  - [Key capability 3]
-- **Outputs**: [What this component produces]
+#### Capabilities
+- Validates event envelope and payload schema
+- Applies patches to `nodes`/`edges`; increments `nodes.version`
+- Writes `events` and `changelog`; regenerates impacted Markdown/Mermaid views
+- Publishes changes via Supabase Realtime; enqueues sub‑agent jobs when needed
 
-#### [Another Sub-Component Name]
-- **Function**: [What this sub-component does]
-- **Capabilities**:
-  - [Key capability 1]
-  - [Key capability 2]
-- **Outputs**: [What this component produces]
+### 3. Canonical Graph Store (DB)
+**Purpose**: Source of truth (JSON graph)
+**Assessment**: Central; design for stable IDs and drift detection
 
-### 2. [Component Name] - **[Completion %]% Complete**
+#### Entities
+- `nodes(id, project_id, type, props jsonb, version int, ...)`
+- `edges(id, project_id, src, dst, label, props jsonb)`
+- `events(...)`, `changelog(...)`, `jobs(...)`, optional `views(...)`
 
-**Purpose**: [Brief description of component purpose]
+### 4. Views Generator (Server)
+**Purpose**: Generate Markdown sections and Mermaid blocks from graph deltas
+**Assessment**: Generated content carries opaque IDs and checksums
 
-**Assessment**: [Brief assessment of current state and any key considerations]
+#### Capabilities
+- Produces small local Mermaid views; large graphs defer to React Flow
+- Embeds opaque IDs/checksums for safe round‑trip and drift detection
 
-#### [Sub-Component Name]
-- **Function**: [What this sub-component does]
-- **Capabilities**:
-  - [Key capability 1]
-  - [Key capability 2]
-- **Integration**: [How it connects to other components]
-- **Outputs**: [What this component produces]
+### 5. Realtime Notifier (DB→UI)
+**Purpose**: Push selective updates to clients
+**Assessment**: Targets 200–400ms re‑render after change
 
-### 3. [Component Name] - **[Completion %]% Complete**
+#### Capabilities
+- Uses Supabase Realtime (WAL) to emit change signals
+- UI applies optimistic updates and reconciles on server confirm
 
-**Purpose**: [Brief description of component purpose]
+### 6. Jobs & Sub‑agents (Worker)
+**Purpose**: Background critiques, research, and talkback
+**Assessment**: Bounded by budgets; must summarize with actionable next steps
 
-**Assessment**: [Brief assessment of current state and any key considerations]
+#### Capabilities
+- QStash scheduled/HTTP jobs for agent tasks
+- Returns `agent.*` events to `/api/spec-events` (same compiler lane)
+- Emits task receipts (queued→running→summarized) with budgets and outcomes
 
-#### [Sub-Component Name]
-- **Function**: [What this sub-component does]
-- **Capabilities**:
-  - [Key capability 1]
-  - [Key capability 2]
-- **Outputs**: [What this component produces]
+### 7. Export Service (Server)
+**Purpose**: Commit `.json` + `.md` to GitHub via App install
+**Assessment**: External dependency; least‑privilege access
+
+#### Capabilities
+- `/api/export` enqueues a job to build commit content
+- Signs exports; tracks provenance for audit
 
 ## Data Flow Architecture
 
-### [Primary Flow Name]
+### Realtime Conversational Flow
 ```
-[Input] → [Processing Step] → [Storage/Processing] → [Output] → [User Result]
+Browser (WebRTC) → OpenAI Realtime → tool call → POST /api/spec-events →
+Compiler (validate/merge) → DB upsert (nodes/edges/events/changelog) →
+Supabase Realtime (WAL) → UI selective re‑render
 ```
 
-### [Secondary Flow Name]
+### Sub‑agent Flow
 ```
-[Input] → [Processing Step] → [Integration] → [Output] → [User Result]
+Compiler → enqueue job (QStash) → Worker → AgentEvents → POST /api/spec-events →
+Compiler (same lane) → DB + Realtime → UI
+```
+
+### Export Flow
+```
+User → POST /api/export → enqueue export job → GitHub App commit → link surfaced in UI
 ```
 
 ### Key Architectural Principles
-
-1. **[Principle Name]**: [Description of architectural principle and why it matters]
-2. **[Principle Name]**: [Description of architectural principle and why it matters]
-3. **[Principle Name]**: [Description of architectural principle and why it matters]
-4. **[Principle Name]**: [Description of architectural principle and why it matters]
-5. **[Principle Name]**: [Description of architectural principle and why it matters]
+1. **JSON Canonical**: Graph is the single source of truth; Markdown/Mermaid are generated
+2. **One Event Lane**: All mutations use the same event envelope for provenance/idempotency
+3. **Idempotency & Locks**: Unique IDs, version checks, short advisory locks during apply
+4. **Provenance & Auditing**: Who/when/why with model versions and inputs/outputs
+5. **Budgets & Guardrails**: Per‑project budget, per‑job `budget_ms`, queue depth caps
 
 ## Component Interaction Patterns
 
-### [Pattern Name]
-- [Description of how components interact in this pattern]
-- [Key benefits and use cases]
+### Evented Compilation Pattern
+- Input: `spec.*` or `agent.*` events
+- Process: validate → apply → persist → publish → generate views
+- Benefits: auditability, conflict control, realtime UX
 
-### [Pattern Name]
-- [Description of how components interact in this pattern]
-- [Key benefits and use cases]
+### Drift‑Resistant Views Pattern
+- Generated Markdown/Mermaid carry opaque IDs and checksums
+- Detect drift; regenerate rather than hand‑edit critical fields
 
-### Cross-Component Data Sharing
-- [How data flows between components]
-- [Key integration points and dependencies]
-- [Data consistency and synchronization patterns]
+### Cross‑Component Data Sharing
+- UI consumes DB projections via Realtime signals and `/api/graph`
+- Workers use `/api/spec-events` to submit changes back to compiler
+- Export service reads canonical graph and generated views
 
-This architecture enables [Project Name]'s unique value proposition: [brief description of what the architecture enables and why it's valuable].
+This architecture enables reliable conversational ideation with transparent diffs, exportable artifacts, and safe background autonomy.
 
 ## Readiness Assessment
 
-### Overall Architecture Completion: **[X]% Complete**
-
-**Calculation**: ([Component 1]% + [Component 2]% + [Component 3]% + ...) ÷ [Number of Components] = [X]%
-
-### Critical Areas Status
-
-#### 🟢 [Area Name]: [Status Description]
-**Current Status**: [Detailed status]
-- ✅ [Completed item]
-- ✅ [Completed item]
-- ⚠️ [Item needing attention]
-- ❌ [Missing item]
-
-#### 🟡 [Area Name]: [Status Description]
-**Current Status**: [Detailed status]
-- ✅ [Completed item]
-- ❌ **Critical**: [Missing critical item]
-- ❌ **Critical**: [Missing critical item]
-
-#### 🔴 [Area Name]: [Status Description]
-**Current Status**: [Detailed status]
-- ❌ **Critical**: [Missing critical item]
-- ❌ **Critical**: [Missing critical item]
+### Overall Architecture Completion: **0% → evolves with implementation**
 
 ### Priority Development Areas
+1. **Core Loop** (Critical for MVP)
+   - `/api/realtime/session`, `/api/spec-events`, DB schema, WAL→UI wiring
+2. **Compiler & ChangeLog** (Critical for trust)
+   - Patch application, idempotency, provenance, view generation
+3. **Export & Large Graphs** (Usability)
+   - React Flow fallback, GitHub export path
+4. **Sub‑agents & Budgets** (Depth)
+   - QStash worker, receipts, inbox accept/reject
 
-1. **[Priority Area]** (Critical for [Goal])
-   - **[Specific requirement]**
-   - **[Specific requirement]**
-   - **[Specific requirement]**
-
-2. **[Priority Area]** (Critical for [Goal])
-   - **[Specific requirement]**
-   - **[Specific requirement]**
-
-### Recommended Development Sequence
-
-**Phase 1** ([X] weeks): [Phase Name]
-- **[Key deliverable]**
-- **[Key deliverable]**
-
-**Phase 2** ([X] weeks): [Phase Name]
-- **[Key deliverable]**
-- **[Key deliverable]**
-
-**Total Estimated Timeline**: [X] weeks
+### Recommended Delivery Slices
+- Slice 1: Voice + SpecEvents + Graph JSON + Mermaid snapshot
+- Slice 2: Compiler + ChangeLog + FileTree + generated MD
+- Slice 3: React Flow fallback + Realtime subscriptions + GitHub export
+- Slice 4: Critic sub‑agent + budgets + agent inbox
 
 ---
 
-*This document should be updated as the system architecture evolves and components are implemented.*
+*Keep this document current as components land and interfaces stabilize.*

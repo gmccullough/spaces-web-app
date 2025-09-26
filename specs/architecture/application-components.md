@@ -1,100 +1,149 @@
 # Application Components
 
-## Technology Stack
+## Technology Stack (AI Ideation App MVP)
 
 ### Core Frameworks
-- **Backend**: [Framework TBD - e.g., Ruby on Rails, Node.js, Python/Django]
-- **Frontend**: [Framework TBD - e.g., React, Vue, Next.js]
-- **Styling**: [CSS Framework TBD - e.g., Tailwind, ShadCN, Bootstrap]
+- **Frontend**: Next.js (App Router, TypeScript) + Tailwind CSS + shadcn/ui
+- **State/Data**: Zustand (ephemeral UI state) + TanStack Query (server data)
+- **Backend**: Next.js Route Handlers (Node.js) for API surface
+
+### Voice & Realtime
+- **Voice**: OpenAI Agents SDK (browser WebRTC) + OpenAI Realtime API (full‑duplex, barge‑in)
+- **Realtime Events → UI**: Supabase Realtime (Postgres WAL) to push node/edge/event changes
 
 ### Database & Storage
-- **Primary Database**: [Database TBD - e.g., PostgreSQL, MySQL, MongoDB]
-- **File Storage**: [Storage solution TBD - e.g., AWS S3, Cloudinary, local storage]
+- **Primary Database**: Supabase Postgres (with RLS)
+- **Storage**: Supabase Storage (audio, exports)
 
-### Development Environment
-- **Containerization**: Docker (recommended for consistency)
-- **Local Development**: [Specify local setup approach]
+### Jobs & Sub‑agents
+- **Queue**: Upstash QStash (HTTP queue)
+- **Workers**: Lightweight Node worker (Render/Fly) for background sub‑agents
 
-### Production Hosting
-- **Platform**: [Hosting platform TBD - e.g., Render, Vercel, AWS, Heroku]
-- **Deployment**: Docker-based deployment (recommended)
+### Graphs & Visuals
+- **Small graphs**: Mermaid (embedded in Markdown views)
+- **Large/interactive**: React Flow (fallback in UI for bigger graphs)
 
-## Third-Party Services
+### Exports
+- **GitHub App**: Commits canonical JSON + generated Markdown to a repo
+
+## Third‑Party Services
 
 ### Authentication & User Management
-- **Service**: [Auth provider TBD - e.g., Supabase, Auth0, Firebase Auth]
-- **Purpose**: User authentication and session management
+- **Service**: Supabase Auth
+- **Purpose**: Auth, sessions, RLS enforcement, project‑scoped secrets
 
 ### External APIs & Integrations
-- **[Service Name]**: [Purpose and integration details]
-- **[Service Name]**: [Purpose and integration details]
+- **OpenAI Realtime**: Low‑latency conversational loop over WebRTC
+- **Upstash QStash**: Background job queue for sub‑agents
+- **GitHub App**: Export commits for `.json` and `.md` spec assets
 
 ### Media & Asset Management
-- **Service**: [Media service TBD - e.g., Cloudinary, AWS S3, ImageKit]
-- **Purpose**: Image/video hosting and optimization
+- **Supabase Storage**: Audio segments, exports, and generated artifacts
 
 ## Environment Configuration
 
 ### Required Environment Variables
 
 ```bash
-# Application Configuration
-APP_URL=                    # Application base URL
-DATABASE_URL=               # Database connection string
+# App
+APP_URL=                                # Public URL (e.g., Vercel domain)
+NODE_ENV=                               # development | production
 
-# Authentication
-AUTH_SECRET=                # Authentication secret key
-AUTH_PROVIDER_KEY=          # Third-party auth provider key
-AUTH_PROVIDER_SECRET=       # Third-party auth provider secret
+# Supabase
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=              # Server-side ops (RLS-aware)
 
-# External Services
-EXTERNAL_API_KEY=           # External service API key
-MEDIA_SERVICE_KEY=          # Media service API key
-MEDIA_SERVICE_SECRET=       # Media service secret
+# OpenAI Realtime / Agents SDK
+OPENAI_API_KEY=
+OPENAI_REALTIME_MODEL=gpt-4o-realtime-preview-2025-XX
 
-# Development/Production Flags
-NODE_ENV=                   # Environment (development/production)
-DEBUG_MODE=                 # Debug logging flag
+# Upstash QStash
+QSTASH_URL=
+QSTASH_TOKEN=
+
+# GitHub App (Export)
+GITHUB_APP_ID=
+GITHUB_APP_PRIVATE_KEY_BASE64=
+GITHUB_APP_INSTALLATION_ID=
+GITHUB_EXPORT_REPO=                     # org/repo for exports
+
+# Security / Ops
+JWT_SECRET=                             # If applicable for server hooks
+RATE_LIMIT_BUDGET_DAILY=                # Per-project LLM/agent budget
 ```
 
 ### Environment Setup Notes
-- Store sensitive keys in `.env.local` for local development
-- Use environment-specific configuration files
-- Never commit sensitive credentials to version control
-- Document all required environment variables
+- Store secrets in `.env.local` for local development; never commit secrets
+- Use project‑scoped secrets; client receives ephemeral tokens only
+- Keep OPENAI keys server‑side; issue ephemeral Realtime tokens from backend
+- Prefer `NEXT_PUBLIC_*` vars only for non‑secret UI config
 
 ## Architecture Patterns
 
-### API Design
-- RESTful API endpoints
-- JSON request/response format
-- Consistent error handling
-- API versioning strategy
+### Canonical Data & Views
+- **Canonical Source**: JSON graph (nodes, edges, events, changelog)
+- **Generated Views**: Markdown sections and Mermaid blocks derived from JSON
+- **Mermaid Policy**: Treat Mermaid blocks as generated; hand‑edit only small local views
 
-### Data Flow
-- [Describe typical request/response flow]
-- [Document data transformation patterns]
-- [Specify caching strategies]
+### API Design (Route Handlers)
+- RESTful endpoints with consistent JSON envelopes and error formats
+- Idempotent event submission with unique IDs and version checks
+
+### Event Model (One Lane for Everything)
+All mutations—human or agent—flow through a single event envelope for provenance and idempotency:
+
+```json
+{
+  "id": "evt_01HW...",
+  "project_id": "p_123",
+  "type": "spec.add_requirement",
+  "actor": { "kind": "user|agent", "id": "u_42|critic_v1" },
+  "causation_id": "evt_01HV...",
+  "correlation_id": "conv_77",
+  "ts": "2025-09-26T16:12:08Z",
+  "payload": { /* type-specific */ }
+}
+```
 
 ### Security Considerations
-- Authentication and authorization patterns
-- Data validation and sanitization
-- Rate limiting and abuse prevention
-- CORS and security headers
+- Supabase Auth + RLS; project‑scoped secrets
+- Idempotency keys; `nodes.version` checks; reject stale patches
+- Short `pg_advisory_xact_lock(entity_id)` to avoid races during applies
+- Provenance ledger: who/when/why, inputs/outputs, model version
+- Rate limits and per‑project budgets for LLM/agent usage
+
+## Minimal Data Model (Supabase)
+
+- `projects(id, name, owner_id, repo_url, created_at)`
+- `nodes(id, project_id, type, props jsonb, version int, created_at, updated_at)`
+- `edges(id, project_id, src, dst, label, props jsonb)`
+- `events(id, project_id, type, actor jsonb, payload jsonb, causation_id, correlation_id, ts)`
+- `changelog(id, project_id, entity_id, patch jsonb, rationale text, actor jsonb, ts)`
+- `jobs(id, project_id, kind, status, input jsonb, output jsonb, budget_ms, started_at, finished_at)`
+- (optional) `views(project_id, kind, content text, checksum, ts)`
+
+## API Surface (Initial)
+
+- `POST /api/realtime/session` → ephemeral token for browser voice session
+- `POST /api/spec-events` → validate + compile + persist + publish
+- `GET  /api/graph` → canonical JSON graph (selectors for subgraphs)
+- `GET  /api/files` → generated Markdown list + content (with Mermaid blocks)
+- `POST /api/export` → enqueue GitHub commit job
+- `POST /api/jobs/create` → create background job; worker handles `/jobs/run`
 
 ## Deployment Architecture
 
 ### Production Setup
-- Container-based deployment
-- Environment variable management
-- Database migration strategy
-- Static asset serving
+- Frontend on Vercel or similar; API via Next.js Route Handlers
+- Worker deployed on Render/Fly; QStash HTTP triggers
+- Supabase for DB/Auth/Storage/Realtime
+- GitHub App for export automation
 
 ### Monitoring & Observability
-- Application logging
-- Error tracking
-- Performance monitoring
-- Health check endpoints
+- Application logging + error tracking; OpenAI + QStash request IDs
+- Performance monitoring; WAL → client update latency (<400ms target)
+- Health checks for worker and API endpoints
 
 ## Development Guidelines
 
@@ -102,15 +151,15 @@ DEBUG_MODE=                 # Debug logging flag
 1. Clone repository
 2. Copy `.env.example` to `.env.local`
 3. Configure required environment variables
-4. Run `docker-compose up` (or equivalent setup)
-5. Access application at configured URL
+4. Start Next.js dev server; run worker locally as needed
+5. Use Supabase local stack or hosted project
 
 ### Testing Strategy
-- Unit tests for business logic
-- Integration tests for API endpoints
-- End-to-end tests for critical user flows
-- Performance testing for scalability
+- Unit tests for spec compiler and event validation
+- Integration tests for API endpoints and DB transactions
+- End‑to‑end tests for conversational loop and UI event updates
+- Performance tests for WAL→UI latency and queue throughput
 
 ---
 
-*This document should be updated as the application architecture evolves and specific technology choices are made.*
+*This document reflects the AI Ideation App MVP architecture and should evolve with implementation.*
