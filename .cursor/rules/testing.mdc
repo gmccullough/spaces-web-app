@@ -1,0 +1,251 @@
+---
+description: Testing standards and quality assurance guidelines
+alwaysApply: true
+---
+
+# Testing Standards and Quality Assurance
+
+## Core Testing Philosophy
+
+### Quality-First Development
+**Testing Priority**: Always prefer comprehensive testing over manual validation or shortcuts. Testing should be integrated into the development process from the beginning, not added as an afterthought.
+
+### Testing Framework Hierarchy
+
+#### 1. Unit Tests (Foundation)
+- **Purpose**: Test individual functions, classes, or components in isolation
+- **Coverage**: All business logic, utility functions, and core algorithms
+- **Speed**: Fast execution (< 1 second per test suite)
+- **Independence**: Each test should be completely independent
+
+#### 2. Integration Tests (System Validation)
+- **Purpose**: Test how different parts of the system work together
+- **Coverage**: API endpoints, database interactions, service integrations
+- **Scope**: Cross-component functionality and data flow
+- **Environment**: Test against real or realistic test environments
+
+#### 3. End-to-End Tests (User Experience)
+- **Purpose**: Validate complete user workflows and system integration
+- **Coverage**: Critical user journeys and business processes
+- **Tools**: Browser automation, API testing tools
+- **Frequency**: Run on major changes and before releases
+
+#### 4. Performance Tests (Scalability)
+- **Purpose**: Validate system performance under various load conditions
+- **Coverage**: Response times, throughput, resource utilization
+- **Scenarios**: Normal load, peak load, stress conditions
+- **Monitoring**: Continuous performance monitoring in production
+
+## Testing Standards
+
+### Test Categories and Usage
+
+| Category | Purpose | When to Use | Execution Time |
+|----------|---------|-------------|----------------|
+| **Unit Tests** | Component validation | Every code change | < 1 minute |
+| **Integration Tests** | System integration | API changes, service updates | 2-5 minutes |
+| **End-to-End Tests** | User workflow validation | Feature development, releases | 5-15 minutes |
+| **Performance Tests** | Load and stress testing | Major releases, scaling concerns | 10-30 minutes |
+| **Security Tests** | Vulnerability scanning | Regular intervals, security changes | Variable |
+
+### Required Test Coverage
+
+**All new features MUST have**:
+1. Unit tests for all business logic and core functionality
+2. Integration tests for API endpoints and external service interactions
+3. End-to-end tests for user-facing features and critical workflows
+4. Performance tests for features that impact system performance
+
+### Test Organization Patterns
+
+#### File Naming Convention
+```
+[component-name].[test-type].test.[ext]
+
+Examples:
+- user-service.unit.test.js
+- auth-controller.integration.test.js
+- checkout-flow.e2e.test.js
+- api-performance.perf.test.js
+```
+
+#### Test Structure Requirements
+```javascript
+describe('[Component] [Feature] - [Specific Area]', () => {
+  // Setup with proper test data and mocks
+  beforeEach(() => {
+    // Test setup
+  });
+
+  // Test implementation with clear descriptions
+  it('should handle [specific scenario] correctly', () => {
+    // Test implementation
+  });
+
+  // Cleanup
+  afterEach(() => {
+    // Test cleanup
+  });
+});
+```
+
+## Test Implementation Standards
+
+### Unit Testing Best Practices
+
+#### Test Structure
+- **Arrange**: Set up test data and conditions
+- **Act**: Execute the code being tested
+- **Assert**: Verify the expected outcome
+- **Cleanup**: Clean up any resources or state
+
+#### Test Quality Requirements
+- **Clear test names**: Describe what is being tested and expected outcome
+- **Independent tests**: Each test should be able to run independently
+- **Deterministic results**: Tests should produce consistent results
+- **Appropriate assertions**: Use specific assertions that clearly indicate expectations
+
+#### Example Unit Test
+```javascript
+describe('UserService - validateEmail', () => {
+  it('should return true for valid email addresses', () => {
+    // Arrange
+    const userService = new UserService();
+    const validEmail = 'user@example.com';
+
+    // Act
+    const result = userService.validateEmail(validEmail);
+
+    // Assert
+    expect(result).toBe(true);
+  });
+
+  it('should return false for invalid email addresses', () => {
+    // Arrange
+    const userService = new UserService();
+    const invalidEmail = 'invalid-email';
+
+    // Act
+    const result = userService.validateEmail(invalidEmail);
+
+    // Assert
+    expect(result).toBe(false);
+  });
+});
+```
+
+### Integration Testing Best Practices
+
+#### Database Testing
+- Use test databases that mirror production structure
+- Clean up test data after each test
+- Test both success and failure scenarios
+- Verify data integrity and constraints
+
+#### API Testing
+- Test all HTTP methods and status codes
+- Validate request and response formats
+- Test authentication and authorization
+- Include error handling scenarios
+
+#### External Service Testing
+- Use test environments when available
+- Mock external services when necessary
+- Test timeout and failure scenarios
+- Validate data transformation and mapping
+
+### End-to-End Testing Best Practices
+
+#### User Journey Testing
+- Test complete user workflows from start to finish
+- Include both happy path and error scenarios
+- Test across different browsers and devices
+- Validate user interface elements and interactions
+
+#### Test Data Management
+- Use realistic test data that represents production scenarios
+- Clean up test data after test execution
+- Avoid dependencies on external data sources
+- Include edge cases and boundary conditions
+
+## Test Automation and CI/CD Integration
+
+### Continuous Integration Requirements
+- **All tests must pass** before code can be merged
+- **Test execution time** should be optimized for fast feedback
+- **Test results** should be clearly reported and actionable
+- **Failed tests** should block deployment until resolved
+
+### Test Execution Strategy
+```bash
+# Development workflow
+npm test                    # Run all tests
+npm run test:unit          # Run unit tests only
+npm run test:integration   # Run integration tests only
+npm run test:e2e          # Run end-to-end tests only
+npm run test:performance  # Run performance tests only
+
+# CI/CD pipeline
+npm run test:ci           # Optimized for CI environment
+npm run test:coverage     # Generate coverage reports
+npm run test:lint         # Code quality checks
+```
+
+### Coverage Requirements
+- **Unit Test Coverage**: Minimum 80% code coverage
+- **Integration Coverage**: All API endpoints and critical integrations
+- **E2E Coverage**: All critical user workflows
+- **Performance Coverage**: All performance-critical features
+
+## Quality Assurance Standards
+
+### Code Quality Requirements
+- **Linting**: All code must pass linting rules
+- **Formatting**: Consistent code formatting across the project
+- **Documentation**: All public APIs must be documented
+- **Error Handling**: Comprehensive error handling and logging
+
+### Review Process
+- **Code Reviews**: All code changes must be reviewed
+- **Test Reviews**: Test quality and coverage must be reviewed
+- **Performance Reviews**: Performance impact must be assessed
+- **Security Reviews**: Security implications must be evaluated
+
+### Quality Metrics
+- **Test Coverage**: Track and maintain test coverage metrics
+- **Test Execution Time**: Monitor and optimize test execution time
+- **Defect Rate**: Track defects found in testing vs. production
+- **Performance Metrics**: Monitor application performance metrics
+
+## Testing Tools and Framework
+
+### Recommended Testing Stack
+- **Unit Testing**: Jest, Mocha, or similar framework
+- **Integration Testing**: Supertest, TestContainers, or similar
+- **E2E Testing**: Playwright, Cypress, or Selenium
+- **Performance Testing**: Artillery, JMeter, or k6
+- **Mocking**: Sinon, Jest mocks, or similar
+
+### Test Environment Management
+- **Local Development**: Easy setup and execution of tests
+- **CI/CD Environment**: Optimized for automated execution
+- **Staging Environment**: Production-like environment for final testing
+- **Production Monitoring**: Continuous monitoring and alerting
+
+## Maintenance and Evolution
+
+### Test Maintenance
+- **Regular Review**: Periodically review and update tests
+- **Refactoring**: Refactor tests when code changes
+- **Performance Optimization**: Optimize slow or flaky tests
+- **Documentation Updates**: Keep test documentation current
+
+### Testing Strategy Evolution
+- **Tool Evaluation**: Regularly evaluate new testing tools and techniques
+- **Process Improvement**: Continuously improve testing processes
+- **Team Training**: Ensure team members are trained on testing best practices
+- **Metrics Analysis**: Use testing metrics to identify areas for improvement
+
+---
+
+*This testing strategy ensures comprehensive quality assurance while maintaining development velocity through well-structured testing patterns and automation.*

@@ -1,0 +1,187 @@
+---
+description: Architecture patterns, specs navigation, and system design guidance
+alwaysApply: true
+---
+
+# Architecture & Specs Navigation
+
+## Specs Directory Structure
+
+The project uses a comprehensive specifications system organized into focused domains:
+
+### Core Specs Organization
+- **`specs/architecture/`** - System architecture and component design
+- **`specs/business/`** - Business strategy, market analysis, and validation frameworks
+- **`specs/product/`** - Domain-organized product specifications (what/why)
+- **`specs/work-plans/`** - Implementation plans and lifecycle management (how/when)
+
+### Navigation Quick Reference
+- **Architecture Context**: `specs/architecture/application-components.md` and `logical-components.md`
+- **Business Strategy**: `specs/business/README.md` for market analysis and validation
+- **Product Requirements**: `specs/product/[domain]/` for feature specifications
+- **Implementation Planning**: `specs/work-plans/[domain]/` for work plans and execution
+
+## Architecture Principles
+
+### System Design Philosophy
+- **Domain-Driven Design**: Organize code and specifications around business domains
+- **Separation of Concerns**: Clear boundaries between different system responsibilities
+- **Scalability by Design**: Architecture should support growth in users, data, and complexity
+- **Integration-First**: Design for external service integration and API evolution
+- **Testability**: Architecture should facilitate comprehensive testing at all levels
+
+### Component Organization
+- **Logical Components**: High-level system components that represent business capabilities
+- **Technical Components**: Implementation-specific components (services, controllers, models)
+- **Integration Components**: Components that handle external service integration
+- **Infrastructure Components**: Components that handle deployment, monitoring, and operations
+
+### Data Flow Patterns
+- **Request/Response Flow**: Standard API request processing patterns
+- **Event-Driven Flow**: Asynchronous processing and event handling patterns
+- **Batch Processing Flow**: Background job and data processing patterns
+- **Real-time Flow**: WebSocket, streaming, and real-time data patterns
+
+## Architectural Decision Making
+
+### Decision Documentation
+All significant architectural decisions should be documented using Architecture Decision Records (ADRs):
+
+```markdown
+# ADR-[Number]: [Decision Title]
+
+## Status
+[Proposed | Accepted | Deprecated | Superseded]
+
+## Context
+[Description of the issue motivating this decision]
+
+## Decision
+[Description of the decision and rationale]
+
+## Consequences
+### Positive
+- [Benefit 1]
+- [Benefit 2]
+
+### Negative
+- [Trade-off 1]
+- [Trade-off 2]
+
+## Alternatives Considered
+- [Alternative approaches and why they were rejected]
+```
+
+### Decision Criteria
+When making architectural decisions, consider:
+- **Business Requirements**: How does this support business objectives?
+- **Technical Constraints**: What are the technical limitations and requirements?
+- **Scalability**: How will this scale with growth?
+- **Maintainability**: How easy will this be to maintain and evolve?
+- **Performance**: What are the performance implications?
+- **Security**: What are the security considerations?
+- **Cost**: What are the development and operational costs?
+
+## Integration Patterns
+
+### External Service Integration
+- **API Integration**: RESTful API integration patterns and best practices
+- **Authentication**: OAuth, API keys, and other authentication mechanisms
+- **Error Handling**: Graceful handling of external service failures
+- **Rate Limiting**: Respecting external service rate limits and quotas
+- **Caching**: Appropriate caching strategies for external data
+- **Monitoring**: Monitoring external service health and performance
+
+### Database Integration
+- **Data Modeling**: Relational and NoSQL data modeling patterns
+- **Migration Strategy**: Database schema evolution and migration patterns
+- **Performance Optimization**: Query optimization and indexing strategies
+- **Backup and Recovery**: Data backup and disaster recovery planning
+- **Scaling**: Database scaling strategies (vertical, horizontal, sharding)
+
+### Frontend-Backend Integration
+- **API Design**: RESTful API design principles and conventions
+- **Data Serialization**: JSON, GraphQL, and other data serialization formats
+- **Real-time Communication**: WebSocket and Server-Sent Events patterns
+- **Authentication**: Session management and token-based authentication
+- **Error Handling**: Consistent error response formats and handling
+
+## Performance and Scalability
+
+### Performance Optimization
+- **Caching Strategies**: Application-level, database, and CDN caching
+- **Database Optimization**: Query optimization, indexing, and connection pooling
+- **Asset Optimization**: Image, CSS, JavaScript, and other asset optimization
+- **Code Optimization**: Algorithm optimization and performance profiling
+- **Monitoring**: Application performance monitoring and alerting
+
+### Scalability Patterns
+- **Horizontal Scaling**: Load balancing and distributed system patterns
+- **Vertical Scaling**: Resource optimization and capacity planning
+- **Microservices**: Service decomposition and inter-service communication
+- **Event-Driven Architecture**: Asynchronous processing and event sourcing
+- **Caching**: Distributed caching and cache invalidation strategies
+
+## Security Architecture
+
+### Security Principles
+- **Defense in Depth**: Multiple layers of security controls
+- **Least Privilege**: Minimal access rights for users and systems
+- **Fail Secure**: Systems should fail to a secure state
+- **Security by Design**: Security considerations integrated from the beginning
+- **Regular Updates**: Keep dependencies and systems updated
+
+### Security Patterns
+- **Authentication**: Multi-factor authentication and identity management
+- **Authorization**: Role-based and attribute-based access control
+- **Data Protection**: Encryption at rest and in transit
+- **Input Validation**: Comprehensive input validation and sanitization
+- **Audit Logging**: Security event logging and monitoring
+
+## Deployment and Operations
+
+### Deployment Architecture
+- **Containerization**: Docker and container orchestration patterns
+- **Infrastructure as Code**: Automated infrastructure provisioning
+- **CI/CD Pipelines**: Automated testing, building, and deployment
+- **Environment Management**: Development, staging, and production environments
+- **Configuration Management**: Environment-specific configuration handling
+
+### Operational Patterns
+- **Monitoring**: Application, infrastructure, and business metrics monitoring
+- **Logging**: Centralized logging and log analysis
+- **Alerting**: Proactive alerting and incident response
+- **Backup and Recovery**: Data backup and disaster recovery procedures
+- **Capacity Planning**: Resource planning and scaling strategies
+
+## Cross-Reference Integration
+
+### Specs Integration
+- **Business Alignment**: Architecture decisions should align with business strategy
+- **Product Requirements**: Technical architecture should support product specifications
+- **Implementation Planning**: Architecture should inform work plan creation and execution
+- **Testing Strategy**: Architecture should facilitate comprehensive testing
+
+### Documentation Maintenance
+- **Living Documentation**: Architecture documentation should evolve with the system
+- **Cross-References**: Maintain links between architecture, business, product, and work plan docs
+- **Version Control**: Track changes to architectural decisions and their rationale
+- **Review Process**: Regular review of architecture documentation for accuracy and relevance
+
+## Architecture Evolution
+
+### Evolutionary Architecture
+- **Incremental Changes**: Prefer small, incremental architectural changes
+- **Fitness Functions**: Automated tests that verify architectural characteristics
+- **Refactoring**: Regular refactoring to improve architecture over time
+- **Technology Evolution**: Plan for technology stack evolution and upgrades
+
+### Change Management
+- **Impact Assessment**: Assess the impact of architectural changes
+- **Migration Planning**: Plan for data and system migrations
+- **Rollback Strategies**: Prepare rollback plans for architectural changes
+- **Communication**: Communicate architectural changes to all stakeholders
+
+---
+
+*This architecture guidance should be used in conjunction with the specific application components and logical components documentation to create a comprehensive understanding of the system design.*

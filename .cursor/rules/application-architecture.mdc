@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+The basic application components and frameworks list lives at /specs/architecture/application-components.md
+
+This rule set should reflect the current summarized state of the application architecture based on these components and the state of the code base against /specs/work-plans/

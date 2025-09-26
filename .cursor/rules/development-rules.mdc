@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+No data deletion from any repository (database or 3rd party API) without full confirmation from me
+No use of fake data. Do not validate components with fake data unless directly requested, to ensure that dependencies are fully considered at development time.
+Not git adding or committing. I will do this after verifying changes.
+Refactor regularly - bake it into the task plan

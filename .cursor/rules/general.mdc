@@ -1,0 +1,109 @@
+---
+description: General development approach and cross-cutting concerns
+alwaysApply: true
+---
+
+# General Development Guidance
+
+## Cross-Reference Map
+For specific guidance, refer to:
+- **Architecture & Specs Navigation**: See `architecture.mdc`
+- **Development Rules & Environment**: See `development-workflow.mdc`
+- **Business Strategy**: See `business-strategy.mdc` (when working in specs/business/)
+- **Testing Guidelines**: See `testing.mdc`
+- **Work Plans Process**: See `work-plans.mdc` (when working in specs/work-plans/)
+
+## File Ownership Reference
+- Architecture context → `architecture.mdc`
+- Development workflow → `development-workflow.mdc`
+- Business decisions → `business-strategy.mdc`
+- Testing approach → `testing.mdc`
+- Work plan management → `work-plans.mdc`
+
+## Continuous Refactoring & Improvement
+
+### Pattern-First Development
+**ALWAYS** look for opportunities to refactor and improve the existing codebase with every change:
+
+- **Search for existing patterns first** - Before creating new solutions, thoroughly explore the codebase for similar implementations
+- **Reuse and enhance** - Prefer extending existing patterns over creating new ones
+- **Consolidate related functionality** - Look for opportunities to combine scattered but related code
+- **Improve existing patterns** - When reusing patterns, consider how to make them better for all consumers
+
+### Cross-Domain Thinking
+Think creatively across product and software boundaries:
+- **Product-driven refactoring** - Consider how technical improvements can enable better product experiences
+- **Software-driven product enhancement** - Propose product improvements that emerge from cleaner technical patterns
+- **Functional evolution** - Be willing to suggest functional changes that lead to significantly better overall architecture
+
+### Implementation Approach
+- **Start with existing code exploration** - Always begin by understanding what already exists
+- **Propose refactoring opportunities** - Actively identify and suggest improvements to existing code
+- **Creative problem-solving** - Think beyond the immediate request to find solutions that improve the overall system
+- **Document pattern decisions** - When creating or modifying patterns, document the rationale for future developers
+
+## Code Quality Standards
+
+### Consistency and Maintainability
+- **Follow established patterns** - Maintain consistency with existing codebase conventions
+- **Write self-documenting code** - Use clear variable names, function names, and structure
+- **Add comments for complex logic** - Explain the "why" behind non-obvious implementations
+- **Keep functions focused** - Each function should have a single, clear responsibility
+
+### Error Handling and Robustness
+- **Handle edge cases** - Consider and handle error conditions and edge cases
+- **Provide meaningful error messages** - Help developers and users understand what went wrong
+- **Fail gracefully** - Degrade functionality gracefully when possible rather than crashing
+- **Log appropriately** - Include sufficient logging for debugging without overwhelming output
+
+### Performance and Scalability
+- **Consider performance implications** - Be mindful of performance impact of implementation choices
+- **Optimize for readability first** - Write clear code first, optimize later if needed
+- **Plan for growth** - Consider how code will scale with increased usage or data
+- **Use appropriate data structures** - Choose data structures that fit the use case
+
+## Documentation Standards
+
+### Code Documentation
+- **Document public APIs** - All public functions and classes should have clear documentation
+- **Include usage examples** - Show how to use complex functions or classes
+- **Document assumptions** - Make implicit assumptions explicit
+- **Keep documentation current** - Update documentation when code changes
+
+### Architecture Documentation
+- **Document design decisions** - Explain why certain architectural choices were made
+- **Maintain architecture diagrams** - Keep visual representations of system architecture current
+- **Document integration points** - Clearly describe how different components interact
+- **Record technical debt** - Document known limitations and areas for future improvement
+
+## Collaboration Guidelines
+
+### Code Reviews
+- **Review for patterns** - Look for opportunities to improve or consolidate patterns
+- **Consider maintainability** - Evaluate how easy the code will be to maintain and extend
+- **Check for consistency** - Ensure new code follows established conventions
+- **Suggest improvements** - Provide constructive feedback for better solutions
+
+### Knowledge Sharing
+- **Share discoveries** - When you find useful patterns or solutions, share them with the team
+- **Document lessons learned** - Record insights from debugging or implementation challenges
+- **Mentor others** - Help team members understand patterns and best practices
+- **Ask questions** - Don't hesitate to ask for clarification or alternative approaches
+
+## Project-Specific Adaptations
+
+### Technology Stack Considerations
+- **Leverage framework strengths** - Use the chosen technology stack's best practices and patterns
+- **Consider ecosystem** - Choose libraries and tools that integrate well with the existing stack
+- **Plan for updates** - Consider how technology choices will age and be maintained
+- **Document technology decisions** - Record rationale for major technology choices
+
+### Business Context Integration
+- **Understand business requirements** - Ensure technical solutions align with business needs
+- **Consider user experience** - Think about how technical decisions impact end users
+- **Plan for business growth** - Consider how technical architecture supports business scaling
+- **Communicate technical constraints** - Help business stakeholders understand technical limitations and trade-offs
+
+---
+
+*This general guidance should be adapted and extended based on specific project needs, technology choices, and team preferences.*

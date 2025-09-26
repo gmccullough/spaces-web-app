@@ -1,0 +1,197 @@
+---
+alwaysApply: true
+---
+# Work Plans Process
+
+Work plans live at `specs/work-plans/[domain]/*.md`
+
+## Documentation Structure
+Work plans documentation is split into focused guides:
+
+**CRITICAL**: Before working with work plans, read the appropriate guide:
+
+### For Creating Work Plans
+👉 **`specs/work-plans/work-plan-creation-guide.md`**
+- Fidelity standards and quality requirements
+- Required sections and templates  
+- Discussion collection process
+- Quality control checklists
+
+### For Executing Work Plans
+👉 **`specs/work-plans/work-plan-execution-guide.md`**
+- Lifecycle management (TODO → WIP → Complete)
+- Progress tracking and integrated editing
+- Testing requirements and completion criteria
+
+### For Quick Reference
+👉 **`specs/work-plans/README.md`**
+- Navigation overview and quick start
+- Directory organization
+- Status at a glance
+
+**RULE**: No files should be created or modified in the work-plans directory without reading the appropriate guide(s) above.
+
+## Work Plan Lifecycle Management
+
+### File Naming Convention
+Work plans follow a strict naming convention that reflects their lifecycle status:
+
+- **Planning Phase**: `TODO-<descriptive-name>.md`
+- **Active Development**: `WIP-<descriptive-name>.md`
+- **Completed Work**: `YYYYMMDD-<descriptive-name>.md`
+
+### Lifecycle Transitions
+1. **Create**: Start with `TODO-<descriptive-name>.md`
+2. **Begin Work**: Rename to `WIP-<descriptive-name>.md` when starting implementation
+3. **Track Progress**: Update the WIP file directly as work progresses
+4. **Complete**: Rename to `YYYYMMDD-<descriptive-name>.md` when finished. Be sure to clean up any TODO or WIP named versions that have been superseded by the final dated version.
+5. **Archive**: Completed files serve as historical records
+
+### Integrated Document Editing
+**Golden Rule**: Every work plan edit must consider the document as a unified whole. Changes to any section should trigger review and updates across all related sections to maintain document coherence.
+
+## Quality Standards
+
+### Implementation-Ready Fidelity
+Work plans must provide actionable, implementation-ready guidance:
+- **Heavy on checklists**: >80% of actionable items in checkbox format
+- **Specific actions**: Every item has clear action verb + target component
+- **Implementation context**: Sufficient "how" guidance and rationale
+- **Concrete validation**: Measurable success criteria
+- **Minimal code blocks**: Only essential schemas, interfaces, configurations
+
+### Required Sections
+Every work plan must include:
+1. **Executive Summary & Scope**
+2. **Implementation Phases** (with detailed checklists)
+3. **Technical Architecture** (when applicable)
+4. **Testing Strategy Integration**
+5. **Risk Assessment & Dependencies**
+6. **Discussion & Decision Context**
+7. **Completion Criteria & Timeline**
+
+### Testing Integration
+All work plans must include comprehensive testing strategy:
+- **Tests That Must Pass**: Identify existing tests that must continue passing
+- **New Tests Required**: Plan test coverage for new functionality
+- **Test Documentation Updates**: Update domain test documentation
+
+## Cross-Reference Requirements
+
+### Architecture Context
+For architecture context and specs navigation: See `architecture.mdc`
+
+### Product Specifications
+Work plans must link to relevant product specifications in `specs/product/[domain]/`
+
+### Business Context
+When work plans involve business decisions, reference `business-strategy.mdc`
+
+## Common Work Plan Patterns
+
+### Feature Development Work Plan
+```markdown
+# TODO-feature-name-implementation
+
+## Executive Summary
+**Objective**: [Clear, single-sentence goal]
+**Impact**: [Business value and problem solved]
+**Approach**: [High-level strategy]
+
+## Implementation Plan
+### Phase 1: Foundation
+- [ ] **Create** **ServiceClass** - [Purpose and context]
+  - **Files**: [Specific files]
+  - **Dependencies**: [Prerequisites]
+  - **Validation**: [Success criteria]
+
+### Phase 2: Integration
+- [ ] **Update** **ExistingComponent** - [Integration details]
+  - **Files**: [Specific files]
+  - **Dependencies**: [Prerequisites]
+  - **Validation**: [Success criteria]
+
+## Testing Strategy
+### Tests That Must Pass
+- [List existing tests that must continue passing]
+
+### New Tests Required
+- [Plan new test coverage]
+
+## Completion Criteria
+- [ ] All functionality works as specified
+- [ ] All tests pass (existing and new)
+- [ ] Documentation updated
+- [ ] No breaking changes
+```
+
+### Refactoring Work Plan
+```markdown
+# TODO-component-refactoring
+
+## Executive Summary
+**Objective**: [Refactoring goal]
+**Impact**: [Code quality improvements]
+**Approach**: [Refactoring strategy]
+
+## Implementation Plan
+### Phase 1: Preparation
+- [ ] **Analyze** **ExistingCode** - [Analysis scope]
+- [ ] **Create** **TestCoverage** - [Ensure safety net]
+
+### Phase 2: Refactoring
+- [ ] **Extract** **NewComponent** - [Extraction details]
+- [ ] **Update** **Consumers** - [Update all usage points]
+
+### Phase 3: Cleanup
+- [ ] **Remove** **DeadCode** - [Cleanup scope]
+- [ ] **Validate** **Integration** - [Ensure no regressions]
+
+## Risk Assessment
+### High Risk: Breaking Changes
+- **Risk**: [Specific risk]
+- **Mitigation**: [Prevention strategy]
+- **Contingency**: [Fallback plan]
+```
+
+## Anti-Patterns to Avoid
+
+### Vague Planning
+❌ **Bad**: "Improve user experience"
+✅ **Good**: "Add loading states and error handling to SearchComponent"
+
+### Implementation Details in Plans
+❌ **Bad**: Including full method implementations
+✅ **Good**: Method signatures with purpose comments
+
+### Missing Context
+❌ **Bad**: Checklist items without explanation
+✅ **Good**: Each item includes purpose, files, dependencies, validation
+
+### Scope Creep
+❌ **Bad**: Adding features without updating timeline/resources
+✅ **Good**: Integrated document updates across all sections
+
+## Quality Control Process
+
+### Before Starting Work
+1. Validate file naming follows conventions
+2. Ensure all required sections are present
+3. Verify fidelity standards are met
+4. Check cross-references are accurate
+
+### During Implementation
+1. Update WIP file with progress
+2. Practice integrated document editing
+3. Run regression tests regularly
+4. Update documentation incrementally
+
+### Before Completion
+1. Verify all completion criteria are met
+2. Run full test suite
+3. Update all documentation
+4. Rename to completed status with date
+
+---
+
+*This process ensures work plans are implementation-ready, well-documented, and properly integrated with the broader project architecture and testing strategy.*

@@ -1,0 +1,170 @@
+---
+description: Development rules, environment, and workflow guidelines
+alwaysApply: true
+---
+
+# Development Workflow & Environment
+
+## Core Development Rules
+
+### Data Safety and Integrity
+- **No data deletion** from any repository (database or 3rd party API) without full confirmation
+- **No fake data validation** - Do not validate components with fake data unless directly requested, to ensure that dependencies are fully considered at development time
+- **No API bypassing or stubbing** - Never disable, stub, or bypass external API calls to make functionality "work". If an API is failing, fix the API integration rather than removing the dependency. Don't return hardcoded values or empty responses in place of real API calls
+- **Fail fast, fail visibly** - When external dependencies fail, let the failure surface immediately. Don't build graceful fallbacks unless explicitly instructed to do so. Surface API errors in the UI so they're visible during development and testing
+
+### Version Control and Deployment
+- **No automatic git operations** - Do not git add or commit automatically. Let the user verify changes first
+- **No automatic migrations** - If database migrations are pending, do not run them automatically, but inform the user so they can verify and run manually
+- **No destructive database operations** - Never run destructive database operations like `db:schema:load` or `DROP TABLE`
+- **Respect .gitignore** - Do not update any file that matches .gitignore patterns
+- **No .env modifications** - Do not update .env.local or similar environment files directly, since changes can't be easily reverted
+
+### API Integration Standards
+- **Build for current API versions** - For API integrations, build for the currently specified version and do not build backward compatibility code with old APIs unless specifically requested
+- **Real API integration** - Always integrate with real APIs rather than mocking or stubbing
+- **Proper error handling** - Handle API errors appropriately but don't hide them during development
+- **Document API dependencies** - Clearly document external API dependencies and their requirements
+
+### Code Quality and Maintenance
+- **Refactor regularly** - Bake refactoring into task planning and execution
+- **Remove dead code** - When analyzing code, look for opportunities to remove dead code or unused methods. Mention these opportunities to the user and ask whether they want to make those changes
+- **Pattern consistency** - Follow established patterns in the codebase
+- **Documentation currency** - Keep documentation updated with code changes
+
+## Environment Setup
+
+### Development Environment
+- **Containerization recommended** - Use Docker or similar containerization for consistency across development environments
+- **Environment variables** - Store configuration in environment variables, typically in `.env.local` for local development
+- **Database setup** - Use consistent database setup across development, testing, and production environments
+- **Dependency management** - Use appropriate package managers and lock files for dependency management
+
+### Local Development Workflow
+```bash
+# Example local development setup
+# 1. Clone repository
+git clone [repository-url]
+cd [project-directory]
+
+# 2. Set up environment
+cp .env.example .env.local
+# Edit .env.local with appropriate values
+
+# 3. Install dependencies
+npm install  # or yarn install, pip install -r requirements.txt, etc.
+
+# 4. Set up database
+# Follow project-specific database setup instructions
+
+# 5. Start development server
+npm run dev  # or appropriate start command
+```
+
+### Production Considerations
+- **Environment parity** - Keep development, staging, and production environments as similar as possible
+- **Configuration management** - Use environment-specific configuration without hardcoding values
+- **Deployment automation** - Prefer automated deployment processes over manual deployment
+- **Monitoring and logging** - Include appropriate monitoring and logging for production environments
+
+## Testing Strategy
+
+### Testing Philosophy
+- **Test early and often** - Write tests as you develop, not as an afterthought
+- **Test real integrations** - Test against real APIs and services when possible
+- **Comprehensive coverage** - Include unit tests, integration tests, and end-to-end tests as appropriate
+- **Maintainable tests** - Write tests that are easy to understand and maintain
+
+### Test Categories
+- **Unit Tests**: Test individual functions, classes, or components in isolation
+- **Integration Tests**: Test how different parts of the system work together
+- **End-to-End Tests**: Test complete user workflows from start to finish
+- **Performance Tests**: Test system performance under various load conditions
+
+### Testing Best Practices
+- **Clear test names** - Test names should clearly describe what is being tested
+- **Independent tests** - Tests should not depend on other tests or external state
+- **Appropriate assertions** - Use specific assertions that clearly indicate what is expected
+- **Test data management** - Use appropriate test data that doesn't interfere with development or production data
+
+## Code Review Process
+
+### Review Guidelines
+- **Review for patterns** - Look for opportunities to improve or consolidate existing patterns
+- **Check consistency** - Ensure new code follows established conventions and patterns
+- **Consider maintainability** - Evaluate how easy the code will be to maintain and extend
+- **Verify testing** - Ensure appropriate tests are included with new functionality
+- **Documentation review** - Check that documentation is updated appropriately
+
+### Review Checklist
+- [ ] Code follows established patterns and conventions
+- [ ] Appropriate error handling is included
+- [ ] Tests are included and comprehensive
+- [ ] Documentation is updated if needed
+- [ ] No security vulnerabilities are introduced
+- [ ] Performance implications are considered
+- [ ] Integration points are properly handled
+
+## Debugging and Troubleshooting
+
+### Debugging Approach
+- **Reproduce the issue** - Ensure you can consistently reproduce the problem
+- **Check logs** - Review application logs, error logs, and system logs
+- **Use debugging tools** - Leverage appropriate debugging tools for your technology stack
+- **Test incrementally** - Make small changes and test frequently to isolate issues
+- **Document findings** - Record what you discover during debugging for future reference
+
+### Common Issues and Solutions
+- **Environment differences** - Check for differences between development, staging, and production environments
+- **Dependency conflicts** - Verify that all dependencies are compatible and properly installed
+- **Configuration issues** - Ensure all required configuration is present and correct
+- **API integration problems** - Verify API endpoints, authentication, and data formats
+- **Database issues** - Check database connections, migrations, and data integrity
+
+## Performance Optimization
+
+### Performance Considerations
+- **Measure before optimizing** - Use profiling tools to identify actual performance bottlenecks
+- **Optimize for the common case** - Focus optimization efforts on the most frequently used code paths
+- **Consider caching** - Use appropriate caching strategies for data that doesn't change frequently
+- **Database optimization** - Optimize database queries and use appropriate indexing
+- **Asset optimization** - Optimize images, CSS, JavaScript, and other assets for web applications
+
+### Monitoring and Metrics
+- **Application performance monitoring** - Monitor response times, error rates, and throughput
+- **Resource utilization** - Monitor CPU, memory, disk, and network usage
+- **User experience metrics** - Track metrics that reflect actual user experience
+- **Business metrics** - Monitor metrics that align with business objectives
+
+## Security Considerations
+
+### Security Best Practices
+- **Input validation** - Validate and sanitize all user input
+- **Authentication and authorization** - Implement proper authentication and authorization mechanisms
+- **Data protection** - Protect sensitive data both in transit and at rest
+- **Dependency security** - Keep dependencies updated and scan for security vulnerabilities
+- **Error handling** - Don't expose sensitive information in error messages
+
+### Security Review
+- **Regular security audits** - Conduct regular security reviews of code and infrastructure
+- **Penetration testing** - Perform appropriate penetration testing for web applications
+- **Compliance requirements** - Ensure compliance with relevant security standards and regulations
+- **Incident response** - Have a plan for responding to security incidents
+
+## Documentation Standards
+
+### Code Documentation
+- **Inline comments** - Use comments to explain complex logic or non-obvious implementations
+- **API documentation** - Document all public APIs with clear descriptions and examples
+- **README files** - Maintain clear README files with setup and usage instructions
+- **Architecture documentation** - Document high-level architecture and design decisions
+
+### Process Documentation
+- **Development workflow** - Document the development process and workflow
+- **Deployment procedures** - Document how to deploy the application
+- **Troubleshooting guides** - Create guides for common issues and their solutions
+- **Onboarding documentation** - Provide clear onboarding documentation for new team members
+
+---
+
+*This development workflow should be adapted based on specific project requirements, technology stack, and team preferences.*
