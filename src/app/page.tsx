@@ -10,6 +10,9 @@ export default function Page() {
           Go to /demo
         </a>
       </p>
+      <p>
+        If you were redirected here after login, go back to <a href="/demo" style={{ color: "#2563eb" }}>/demo</a>.
+      </p>
     </div>
   );
 }

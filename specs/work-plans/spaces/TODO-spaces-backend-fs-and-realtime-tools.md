@@ -1,27 +1,28 @@
 ## Executive Summary
 **Objective**: Define and implement file system Space management tools behind our Next.js Realtime/API surface, aligned with legacy MCP `spaces/*` primitives and the current app architecture.
 **Impact**: Single canonical Space discovery/validation/creation flow used by voice sessions and UI; unblocks Space Picker and Index rendering; sets stable contracts for future editors.
-**Approach**: Implement a server module that operates over user-scoped storage (`/data/<user-id>/<space-name>/`) with schema validation, exposed via route handlers for internal consumption by Realtime and UI. Follow read-only by default; write only on explicit creation.
+**Approach**: Implement a unified REST API backed by user-scoped Supabase Storage for Space files. Use JSON schema validation and typed errors. Expose read/write endpoints consumable by Realtime later; web UI remains read-only for now.
 
 ## Scope & Constraints
 ### In Scope
-- [ ] Read-only listing of file Spaces for current user
+- [ ] Unified listing of Spaces for current user (`file` and `ideation`)
 - [ ] Manifest read + validation against server schema
-- [ ] Space creation (manifest.json + stub index.md)
-- [ ] API endpoints for Spaces list/read/create (server-only)
+- [ ] Space ensure/create with mandatory `type` (writes manifest + stub `index.md`)
+- [ ] File read/write APIs scoped to a Space
+- [ ] REST endpoints for Spaces and Files (no MCP prompts/resources)
 - [ ] Type-safe interfaces and error envelopes
 
 ### Out of Scope
-- [ ] Ideation space primitives (separate plan)
+- [ ] Ideation graph CRUD (separate plan; Spaces API still lists `ideation`)
 - [ ] Any UI components (covered in UI plan)
-- [ ] Graph/Mermaid generation or write-event emission
+- [ ] Prompt/resources registries (not using MCP)
 
 ### Success Criteria
-- [ ] Listing excludes invalid manifests and requires `index.md`
-- [ ] Creation produces valid `manifest.json` and stub `index.md`
+- [ ] Unified listing returns `{ name, type, path, created_at, description? }` for both types
+- [ ] Ensure/create writes valid manifest with `type` and stub `index.md`
 - [ ] Validation returns consistent, parseable errors
 - [ ] Endpoints protected by Supabase Auth; user-scoped access
-- [ ] Realtime/voice code can call list/create/read with stable contracts
+- [ ] File APIs support read/write within user scope with traversal prevention
 
 ## Implementation Plan
 
