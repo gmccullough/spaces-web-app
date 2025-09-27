@@ -15,7 +15,7 @@
 ### Out of Scope
 - [ ] Ideation graph CRUD (separate plan; Spaces API still lists `ideation`)
 - [ ] Any UI components (covered in UI plan)
-- [ ] Prompt/resources registries (not using MCP)
+- [ ] MCP-style prompts/resources registries
 
 ### Success Criteria
 - [ ] Unified listing returns `{ name, type, path, created_at, description? }` for both types
@@ -26,7 +26,7 @@
 
 ## Implementation Plan
 
-### Phase 1: Schema, Types, and Storage Paths
+### Phase 1: Schema, Types, and Storage Helpers
 **Goal**: Establish schema, type contracts, and path safety.
 
 - [ ] **Add** **SpaceManifest Schema** - JSON Schema file for validation
@@ -41,26 +41,26 @@
   - **Validation**: Exports `SpaceSummary`, `SpaceManifest`, `ValidationError`, API result types
   - **Context**: Single source of truth for server and UI callers
 
-- [ ] **Create** **spaces/paths.ts** - User-safe path resolution helpers
-  - **Files**: `src/app/lib/spaces/paths.ts`
-  - **Dependencies**: Supabase Auth user id; Node `path`
-  - **Validation**: Prevents path traversal; clamps to `/data/<user-id>` root
-  - **Context**: All FS access goes through these helpers
+- [ ] **Create** **spaces/storage.ts** - User-safe storage helpers (Supabase Storage)
+  - **Files**: `src/app/lib/spaces/storage.ts`
+  - **Dependencies**: Supabase server client; bucket `spaces`
+  - **Validation**: Resolves `users/{userId}/Spaces/{spaceName}` prefixes; prevents traversal and cross-user access
+  - **Context**: All file IO goes through these helpers
 
 ### Phase 2: Core Operations (Server Module)
-**Goal**: Implement list/read/validate/create aligned to MCP semantics.
+**Goal**: Implement unified list/read/validate/ensure semantics with `type` mandatory at creation.
 
-- [ ] **Add** **spaces/fs.ts** - Core FS operations
-  - **Files**: `src/app/lib/spaces/fs.ts`
-  - **Dependencies**: `paths.ts`, `types.ts`, `ajv` (or `jsonschema`), Node `fs/promises`
+- [ ] **Add** **spaces/core.ts** - Core Space operations
+  - **Files**: `src/app/lib/spaces/core.ts`
+  - **Dependencies**: `storage.ts`, `types.ts`, `ajv` (or `jsonschema`)
   - **Validation**: Functions return typed results, never throw on user errors (structured errors instead)
   - **Context**: Headless library consumed by route handlers and Realtime
 
-- [ ] **Implement** `listFileSpacesForUser(userId)`
-  - **Files**: `src/app/lib/spaces/fs.ts`
-  - **Dependencies**: `paths.userRoot`, schema validation, presence of `index.md`
-  - **Validation**: Returns `SpaceSummary[]` sorted by created_at/name; excludes invalids
-  - **Context**: Mirrors legacy `spaces.list_file_spaces()` behavior
+- [ ] **Implement** `listSpacesForUser(userId)`
+  - **Files**: `src/app/lib/spaces/core.ts`
+  - **Dependencies**: `storage.listSpaces`, schema validation, presence of `index.md` and `manifest.json`; `type` read from manifest; if missing, infer by presence of `concepts/`
+  - **Validation**: Returns `SpaceSummary[]` with `type` and timestamps; excludes invalids
+  - **Context**: Unified list for both types
 
 - [ ] **Implement** `readManifest(userId, spaceName)`
   - **Validation**: Reads and parses manifest; returns `SpaceManifest`
@@ -70,30 +70,42 @@
   - **Validation**: Returns `{ valid, errors[] }` with stable codes/messages
   - **Context**: Used by list and creation flows
 
-- [ ] **Implement** `createFileSpace(userId, { name, description? })`
-  - **Validation**: Normalizes name, creates dir, writes manifest + stub index; idempotent if exists returns conflict error
-  - **Context**: Server-side only; no UI writes without explicit call
+- [ ] **Implement** `ensureSpace(userId, { name, type, description? })`
+  - **Validation**: Normalizes name; creates if missing (writes manifest with mandatory `type` + stub index); returns 409 if exists with different `type`
+  - **Context**: Idempotent creation for both types; UI remains read-only but API supports writes now
 
 ### Phase 3: API Endpoints (Route Handlers)
-**Goal**: Expose typed endpoints for internal consumption, fully behind auth.
+**Goal**: Expose unified REST endpoints (auth required) for Spaces and Files.
 
-- [ ] **Create** **GET /api/spaces/list** (authenticated)
-  - **Files**: `src/app/api/spaces/list/route.ts`
-  - **Dependencies**: Supabase session (server helper); `listFileSpacesForUser`
-  - **Validation**: 200 with `{ spaces }`; 401 when unauthenticated (no fallback)
-  - **Context**: For Space Picker and Realtime session bootstrap
+- [ ] **Create** **GET /api/spaces** (authenticated)
+  - **Files**: `src/app/api/spaces/route.ts` (GET)
+  - **Dependencies**: Supabase session; `listSpacesForUser`
+  - **Validation**: 200 with `{ spaces }`; 401 when unauthenticated
+  - **Context**: Unified listing for UI and Realtime
 
-- [ ] **Create** **POST /api/spaces/create** (authenticated)
-  - **Files**: `src/app/api/spaces/create/route.ts`
-  - **Dependencies**: Supabase session; `createFileSpace`
-  - **Validation**: 201 with `{ path, manifestPath, indexPath }`; 409 on conflict; 400 on invalid name
-  - **Context**: Admin/explicit creation only
+- [ ] **POST /api/spaces/ensure** (authenticated)
+  - **Files**: `src/app/api/spaces/ensure/route.ts`
+  - **Dependencies**: Supabase session; `ensureSpace`
+  - **Validation**: 201 on create, 200 on exists; 409 on cross-type conflict; 400 on invalid name
+  - **Context**: Idempotent creation for both types
 
-- [ ] **Create** **GET /api/spaces/manifest** (authenticated)
-  - **Files**: `src/app/api/spaces/manifest/route.ts`
+- [ ] **GET /api/spaces/:name/manifest** (authenticated)
+  - **Files**: `src/app/api/spaces/[name]/manifest/route.ts`
   - **Dependencies**: Supabase session; `readManifest`
   - **Validation**: 200 with `{ manifest }`; 404 when space not found
   - **Context**: Diagnostics and UI detail
+
+- [ ] **GET /api/spaces/:name/index** (authenticated)
+  - **Files**: `src/app/api/spaces/[name]/index/route.ts`
+  - **Dependencies**: Supabase session; storage helper to read `index.md`
+  - **Validation**: 200 text/markdown; 404 when missing
+  - **Context**: Used by Index renderer
+
+- [ ] **Files API (authenticated)**
+  - **Files**: `src/app/api/spaces/[name]/files/route.ts` (GET list, POST create); `src/app/api/spaces/[name]/files/[...path]/route.ts` (GET/PUT/DELETE)
+  - **Dependencies**: Supabase session; storage helpers
+  - **Validation**: Read/write confined to `users/{userId}/Spaces/{name}`; 400 on invalid path; 403 if outside scope
+  - **Context**: Write-capable APIs available now (for Realtime later)
 
 ### Phase 4: Realtime Integration Hooks
 **Goal**: Provide helper for Realtime session bootstrap to ensure Space selection.
@@ -131,8 +143,9 @@ export function createFileSpace(userId: string, input: { name: string; descripti
 
 ### Configuration
 ```ts
-// Root where user data is stored (local dev only; prod may use storage adapter)
-export const DATA_ROOT = process.env.DATA_ROOT || path.join(process.cwd(), 'data');
+// Supabase Storage bucket and user root prefix
+export const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'spaces';
+// Prefix convention: users/{userId}/Spaces/{spaceName}
 ```
 
 ### Middleware Gating (concept)
@@ -147,16 +160,18 @@ export const DATA_ROOT = process.env.DATA_ROOT || path.join(process.cwd(), 'data
 ## Testing Strategy
 
 ### Tests That Must Pass for Completion
-- [ ] Listing excludes invalid manifests and requires `index.md`
-- [ ] Creation writes valid manifest + stub index
+- [ ] Unified listing returns both types and excludes invalid manifests (requires `index.md`)
+- [ ] Ensure writes valid manifest with `type` + stub index; idempotent; 409 on cross-type
 - [ ] Validation returns structured errors
-- [ ] All /api/spaces/* endpoints return 401 when unauthenticated
+- [ ] /api/(spaces|files) endpoints return 401 when unauthenticated
+- [ ] Files API confines to `users/{userId}/Spaces/{name}`; rejects traversal
 
 ### New Tests Required
-- [ ] **Unit**: Path normalization and traversal prevention
+- [ ] **Unit**: Storage path resolution and traversal prevention
 - [ ] **Unit**: Manifest validation rules
-- [ ] **Integration**: List/create/read flows with sample user dirs
-- [ ] **Integration**: Auth gating for /api/spaces/* (401 vs 200/201)
+- [ ] **Integration**: Unified list/ensure/read flows with sample user storage
+- [ ] **Integration**: Auth gating for /api/(spaces|files) (401 vs 200/201)
+- [ ] **Integration**: Files API read/write confinement and MIME handling
 
 ### Test Documentation Updates
 - [ ] **Update** `specs/product/example-domain/tests.md` with Spaces domain coverage additions
