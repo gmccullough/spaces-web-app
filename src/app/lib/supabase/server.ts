@@ -23,7 +23,7 @@ export async function createServerSupabase() {
               expires: options?.expires,
               maxAge: options?.maxAge,
             });
-          } catch (_) {
+          } catch {
             // In non-Route Handler/server action contexts, cookies.set throws.
             // Ignore writes; reads still work for auth.getUser().
           }
@@ -39,7 +39,7 @@ export async function createServerSupabase() {
               path: options?.path ?? '/',
               maxAge: 0,
             });
-          } catch (_) {
+          } catch {
             // Ignore in disallowed contexts
           }
         },
