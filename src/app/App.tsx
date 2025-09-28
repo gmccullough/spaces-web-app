@@ -3,7 +3,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
-import Image from "next/image";
 import { createBrowserSupabase } from "@/app/lib/supabase/client";
 
 // UI components
@@ -288,6 +287,21 @@ function App() {
             addTranscriptBreadcrumb,
           },
         });
+
+        // Create transcript session (user-scoped; no explicit space linkage yet)
+        try {
+          const res = await fetch('/api/transcripts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'create_session' }),
+          });
+          if (res.ok) {
+            const json = await res.json();
+            (window as any)._transcriptSessionId = json.sessionId;
+          }
+        } catch (e) {
+          console.warn('Failed to create transcript session', e);
+        }
       } catch (err) {
         console.error("Error connecting via SDK:", err);
         setSessionStatus("DISCONNECTED");
@@ -316,6 +330,18 @@ function App() {
       },
     });
     sendClientEvent({ type: 'response.create' }, '(simulated user text message)');
+
+    // Log user message
+    try {
+      const sessionId = (window as any)._transcriptSessionId as string | undefined;
+      if (sessionId) {
+        fetch('/api/transcripts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'log_message', sessionId, role: 'user', content: text }),
+        });
+      }
+    } catch {}
   };
 
   const updateSession = (shouldTriggerResponse: boolean = false) => {
@@ -355,6 +381,18 @@ function App() {
     } catch (err) {
       console.error('Failed to send via SDK', err);
     }
+
+    // Log user message
+    try {
+      const sessionId = (window as any)._transcriptSessionId as string | undefined;
+      if (sessionId) {
+        fetch('/api/transcripts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'log_message', sessionId, role: 'user', content: userText.trim() }),
+        });
+      }
+    } catch {}
 
     setUserText("");
   };

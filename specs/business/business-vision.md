@@ -1,143 +1,120 @@
-# Business Vision Template
+# Business Vision: Conversational Spec Ideation (PM‑First, Non‑Engineer Optimized)
 
 ## Executive Summary
 
-**Vision Statement**: [One sentence describing the ultimate goal and impact]
+**Vision Statement**: Turn messy ideas into runnable specs and code scaffolds in minutes.
 
-**Mission**: [What we do, for whom, and how we create value]
+**Mission**: Enable any corporate knowledge worker—not just engineers—to explore, refine, and communicate concepts via voice‑first conversation that produces a canonical, executable specification with auto‑generated views and graphs, ready to hand off to code agents.
 
-**Core Value Proposition**: [The primary benefit we deliver to users/customers]
+**Core Value Proposition**: A hands‑free, voice‑driven ideation flow that transforms unstructured thinking into a consistent, canonical JSON spec; renders synchronized Markdown and Mermaid mind maps automatically; and exports to GitHub so PMs can trigger scaffold generation with their preferred code agents.
 
 ## Market Opportunity
 
 ### Problem Definition
-- **Core Problem**: [The fundamental problem we're solving]
-- **Problem Scope**: [How widespread and significant is this problem]
-- **Current Solutions**: [How people solve this problem today]
-- **Solution Gaps**: [What's missing or inadequate in current approaches]
+- **Core Problem**: Non‑engineers struggle to move from fuzzy ideas to shareable, structured specs that engineers (or code agents) can act on without rework.
+- **Problem Scope**: Widespread across PMs, strategy, marketing, design, innovation, and operations teams who ideate frequently and need crisp artifacts quickly.
+- **Current Solutions**: Ad‑hoc notes (Docs/Notion/Obsidian), slideware, whiteboarding/mind‑mapping tools, and generic chat with LLMs.
+- **Solution Gaps**: No canonical, executable representation; drift between notes, diagrams, and specs; weak provenance; and no clean “round‑trip” from concept → scaffold.
 
 ### Target Market
-- **Primary Market**: [Main customer segment with size and characteristics]
-- **Secondary Markets**: [Additional opportunities for expansion]
-- **Market Size**: [TAM/SAM/SOM with supporting data]
-- **Market Trends**: [Relevant trends supporting market opportunity]
+- **Primary Market**: PM‑first and corporate knowledge workers with creative tasks (ideation, strategy, requirements, comms) who are not engineers.
+- **Secondary Markets**: Product marketing, design research, innovation labs, consultants/agency planners.
+- **Market Size**: Large segment of enterprise knowledge workers; v1 focuses on early adopters in product orgs for traction and references.
+- **Market Trends**: Growing comfort with LLMs in daily workflows; interest in voice interfaces; desire for faster concept‑to‑artifact loops.
 
 ## Competitive Positioning
 
 ### Competitive Landscape
-- **Direct Competitors**: [Companies solving the same problem]
-- **Indirect Competitors**: [Alternative solutions or substitutes]
-- **Competitive Advantages**: [What makes us different/better]
-- **Barriers to Entry**: [What protects our position]
+- **Direct Comparators**: Notion AI, Obsidian (+plugins), Miro/Mind‑map tools, ChatGPT/Claude chats with manual copy‑paste.
+- **Indirect Comparators**: Requirements tools and generic documentation systems.
+- **Barriers to Entry**: Canonical JSON + generated views, GitHub export path, and voice‑first UX tuned for driving use are non‑trivial to execute well.
 
 ### Differentiation Strategy
-- **Unique Value**: [What we offer that others don't]
-- **Positioning**: [How we want to be perceived in the market]
-- **Brand Strategy**: [Key brand attributes and messaging]
+- **Unique Value**: LLM‑powered concept refinement with integrated visualization/mind‑mapping that stays in sync with a canonical JSON spec; one‑click GitHub export for agent scaffolding.
+- **Positioning**: “Spec drift killer for PMs and knowledge workers” that converts conversation into consistent, actionable artifacts.
+- **Brand Strategy**: Voice‑first, safety‑minded (usable while driving), opinionated simplicity, and trustworthy provenance.
 
 ## Business Model
 
 ### Revenue Model
-- **Primary Revenue Streams**: [How we make money]
-- **Secondary Revenue Streams**: [Additional monetization opportunities]
-- **Pricing Strategy**: [How we price our offering and why]
-- **Unit Economics**: [Key metrics like CAC, LTV, gross margins]
+- **Primary**: Free for one space; paid plans based on LLM interaction tiers (usage‑metered).
+- **Secondary (later)**: Team/workspace plans, enterprise controls (SSO, private model routing).
 
-### Go-to-Market Strategy
-- **Customer Acquisition**: [How we find and acquire customers]
-- **Sales Process**: [How we convert prospects to customers]
-- **Distribution Channels**: [How we reach our market]
-- **Partnership Strategy**: [Key partnerships for growth]
+### Pricing Strategy
+- Tiered by LLM interaction volume to align value and cost; free tier encourages adoption and sharing.
+
+### Unit Economics
+- Costs primarily from ASR/LLM/Realtimes; usage tiers cap variable cost exposure per user/workspace.
+
+### Go‑to‑Market Strategy
+- **Customer Acquisition**: PM communities, product newsletters, demo videos, and hands‑on templates.
+- **Distribution Channels**: Web app + GitHub App for export; encourage sharing of exported repos.
+- **Partnership Strategy**: GitHub integration v1; evaluate additional agent providers over time.
 
 ## Product Strategy
 
 ### Core Product
-- **Product Vision**: [What we're building and why]
-- **Key Features**: [Essential capabilities and functionality]
-- **Product Roadmap**: [High-level development priorities]
-- **Success Metrics**: [How we measure product success]
+- **Product Vision**: Voice‑first conversational ideation that compiles to canonical JSON, with Markdown and Mermaid views auto‑generated and always in sync.
+- **Key Features**:
+  - OpenAI Realtime v1 voice interface, hands‑free usage, barge‑in.
+  - Concept refinement tuned for non‑engineers.
+  - Auto‑generated Markdown documents and Mermaid mind maps (read‑only in v1).
+  - GitHub export so PMs can trigger code scaffolds via their preferred agents.
+- **Product Roadmap (v1 stance)**: JSON is canonical; `.md` and graphs are fully auto‑generated; editing “islands” may come later with guardrails.
+- **Success Metrics**: Intentionally deferring quantitative KPIs; qualitative goal is delightful, reliable voice UX usable while driving with minimal UI.
 
 ### Technology Strategy
-- **Technical Approach**: [High-level technology choices and rationale]
-- **Scalability Plan**: [How the technology scales with growth]
-- **Innovation Areas**: [Where we invest in R&D or advanced capabilities]
+- **Technical Approach**: Next.js front‑end; Supabase (Auth/RLS/Realtime/Storage) for data/events; OpenAI Realtime for voice; queue worker for background tasks when needed.
+- **Scalability Plan**: Start simple; optimize LLM usage via tiering and caching; evolve provider abstraction later if needed.
+- **Innovation Areas**: Voice UX quality (latency, barge‑in), canonical spec fidelity, and GitHub round‑trip ergonomics.
 
 ## Growth Strategy
 
-### Phase 1: Foundation ([Timeline])
-- **Objectives**: [What we aim to achieve in this phase]
-- **Key Milestones**: [Specific, measurable goals]
-- **Success Criteria**: [How we know we're ready for next phase]
-
-### Phase 2: Scale ([Timeline])
-- **Objectives**: [What we aim to achieve in this phase]
-- **Key Milestones**: [Specific, measurable goals]
-- **Success Criteria**: [How we know we're ready for next phase]
-
-### Phase 3: Expansion ([Timeline])
-- **Objectives**: [What we aim to achieve in this phase]
-- **Key Milestones**: [Specific, measurable goals]
-- **Success Criteria**: [Long-term success indicators]
+Intentionally deferred for now. Focus is on nailing voice experience and PM‑first product‑market fit before formal growth planning.
 
 ## Risk Assessment
 
-### High-Risk Factors
-- **Market Risk**: [Risk that market doesn't materialize as expected]
-- **Competitive Risk**: [Risk of competitive response or disruption]
-- **Technical Risk**: [Risk of technical challenges or limitations]
-- **Execution Risk**: [Risk of poor execution or resource constraints]
+### High‑Risk Factors
+- **Adoption Risk**: Voice‑first ideation may feel unfamiliar in work settings.
+- **Spec Drift Risk**: If JSON ⇄ views fall out of sync, trust erodes.
+- **Round‑Trip Risk**: GitHub export → scaffold may disappoint if schemas/prompts are brittle.
+- **Cost/Latency Risk**: Realtime voice + LLM can be expensive or laggy without careful guardrails.
 
 ### Mitigation Strategies
-- **Risk Monitoring**: [How we track and assess risks]
-- **Contingency Plans**: [What we do if key risks materialize]
-- **Success Metrics**: [Early warning indicators]
+- **Voice On‑Ramps**: Keyboard‑first parity for critical steps; strong demo flows; driving‑safe UX.
+- **Canonical Source**: JSON is single source of truth; `.md`/graphs are generated only.
+- **GitHub First**: Optimize a single export path (GitHub) for great v1 ergonomics; expand later.
+- **Usage Tiers**: Price by LLM interactions; budget caps and monitoring to keep unit costs predictable.
 
 ## Resource Requirements
 
 ### Team & Talent
-- **Core Team**: [Key roles and capabilities needed]
-- **Hiring Plan**: [When and how we build the team]
-- **Advisory Needs**: [External expertise or guidance needed]
+- **Core Team**: 1 PM/UX (voice workflows), 1 FE/Realtime, 1 BE/spec compiler, 0.5 infra.
+- **Advisory Needs**: Voice UX, prompt/schema design, and enterprise integration guidance.
 
 ### Financial Requirements
-- **Funding Needs**: [Capital requirements by phase]
-- **Use of Funds**: [How capital will be deployed]
-- **Financial Milestones**: [Key financial targets and timing]
+- **Funding Needs**: Modest runway to build v1, instrument usage, and iterate voice UX.
+- **Use of Funds**: LLM/ASR spend, hosting, GitHub App, basic analytics/observability.
 
 ### Technology & Infrastructure
-- **Development Resources**: [Technology and tools needed]
-- **Infrastructure Requirements**: [Hosting, services, and operational needs]
-- **Third-Party Dependencies**: [External services or partnerships required]
+- **Development Resources**: Next.js app, Supabase, OpenAI Realtime, GitHub App.
+- **Third‑Party Dependencies**: OpenAI Realtime (v1), GitHub.
 
 ## Success Metrics & KPIs
 
-### Business Metrics
-- **Revenue Metrics**: [Revenue growth, recurring revenue, etc.]
-- **Customer Metrics**: [Acquisition, retention, satisfaction]
-- **Market Metrics**: [Market share, brand awareness]
-
-### Product Metrics
-- **Usage Metrics**: [User engagement, feature adoption]
-- **Performance Metrics**: [Speed, reliability, quality]
-- **Innovation Metrics**: [New features, capabilities, improvements]
-
-### Operational Metrics
-- **Efficiency Metrics**: [Cost per acquisition, operational efficiency]
-- **Quality Metrics**: [Customer satisfaction, defect rates]
-- **Team Metrics**: [Productivity, retention, satisfaction]
+Intentionally deferred. We will rely on qualitative user feedback and usage narratives until the voice experience is outstanding.
 
 ## Decision Framework
 
 ### Strategic Decisions
-- **Investment Priorities**: [How we decide where to invest resources]
-- **Feature Prioritization**: [How we choose what to build]
-- **Market Expansion**: [How we decide when and where to expand]
+- **North Star**: Deliver an outstanding voice conversation interface that minimizes reliance on traditional UI and is usable while driving.
+- **Investment Priorities**: Voice UX and canonical JSON > additional features. GitHub v1 export > broader integrations.
+- **Feature Prioritization**: PM‑first workflows and shareable artifacts take precedence over engineer‑centric tooling.
 
 ### Success Criteria
-- **Go/No-Go Decisions**: [Criteria for major strategic decisions]
-- **Pivot Indicators**: [Signals that might require strategy changes]
-- **Success Thresholds**: [Metrics that indicate we're on track]
+- **Go/No‑Go Decisions**: Ship when the end‑to‑end voice → JSON → generated views → GitHub export loop feels reliably delightful for non‑engineers.
+- **Pivot Indicators**: If voice proves consistently undesirable in target contexts, reconsider interaction model while preserving canonical spec + generated views.
 
 ---
 
-*This vision document should be reviewed and updated regularly as market conditions, competitive landscape, and business understanding evolve.*
+*This vision document will evolve as we validate the voice experience with PMs and knowledge workers and refine the GitHub round‑trip.*

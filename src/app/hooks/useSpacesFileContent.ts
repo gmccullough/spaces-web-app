@@ -42,7 +42,7 @@ export function useSpacesFileContent(spaceName: string | undefined, path: string
         setState({ loading: false, error: (res as any).error.message || "Error" });
         return;
       }
-      const { contentBase64, contentType, size } = res as any;
+      const { contentBase64, contentType } = res as any;
       if (!isTextual(contentType)) {
         setState({ loading: false, isBinary: true, contentType });
         return;

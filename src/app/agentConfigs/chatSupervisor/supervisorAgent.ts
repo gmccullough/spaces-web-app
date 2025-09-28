@@ -266,6 +266,14 @@ export const getNextResponseFromSupervisor = tool({
       tools: supervisorAgentTools,
     };
 
+    // Attach session context for server-side logging
+    try {
+      const sessionId = (globalThis as any)?.window?._transcriptSessionId;
+      const startedMs = Date.now();
+      (body as any)._sessionId = sessionId;
+      (body as any)._invocationContext = { startedMs };
+    } catch {}
+
     const response = await fetchResponsesMessage(body);
     if (response.error) {
       return { error: 'Something went wrong.' };
@@ -275,6 +283,18 @@ export const getNextResponseFromSupervisor = tool({
     if ((finalText as any)?.error) {
       return { error: 'Something went wrong.' };
     }
+
+    // Log assistant message
+    try {
+      const sessionId = (globalThis as any)?.window?._transcriptSessionId as string | undefined;
+      if (sessionId && typeof finalText === 'string' && finalText.trim().length) {
+        fetch('/api/transcripts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'log_message', sessionId, role: 'assistant', content: finalText }),
+        });
+      }
+    } catch {}
 
     return { nextResponse: finalText as string };
   },

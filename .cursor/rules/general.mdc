@@ -10,6 +10,7 @@ For specific guidance, refer to:
 - **Architecture & Specs Navigation**: See `architecture.mdc`
 - **Development Rules & Environment**: See `development-workflow.mdc`
 - **Business Strategy**: See `business-strategy.mdc` (when working in specs/business/)
+- **Business Vision**: See `specs/business/business-vision.md` (keep in context)
 - **Testing Guidelines**: See `testing.mdc`
 - **Work Plans Process**: See `work-plans.mdc` (when working in specs/work-plans/)
 

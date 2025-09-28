@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/app/lib/supabase/server";
 import { STORAGE_BUCKET } from "@/app/lib/spaces/storage";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const supabase = await createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();

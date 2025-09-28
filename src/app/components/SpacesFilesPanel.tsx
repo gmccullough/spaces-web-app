@@ -63,7 +63,7 @@ export default function SpacesFilesPanel({ children }: SpacesFilesPanelProps) {
       </div>
       <div className="flex flex-col md:flex-row min-h-[240px] md:max-h-[40vh] md:h-[40vh]">
         <div className="w-full md:w-1/3 md:border-r border-b md:border-b-0 overflow-auto">
-          <SpacesFileTree spaceName={spaceName} onSelectPath={setSelectedPath} onSelectSpace={setSpaceName} />
+          <SpacesFileTree spaceName={spaceName} onSelectPath={setSelectedPath} />
         </div>
         <div className="w-full md:w-2/3 overflow-auto">
           <SpacesFileViewer spaceName={spaceName} path={selectedPath} />

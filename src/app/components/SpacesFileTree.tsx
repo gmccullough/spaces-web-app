@@ -6,10 +6,9 @@ import { useSpacesFileTree } from "@/app/hooks/useSpacesFileTree";
 type Props = {
   spaceName?: string;
   onSelectPath?: (path: string) => void;
-  onSelectSpace?: (spaceName: string) => void;
 };
 
-export default function SpacesFileTree({ spaceName, onSelectPath, onSelectSpace }: Props) {
+export default function SpacesFileTree({ spaceName, onSelectPath }: Props) {
   const {
     isReady,
     expandedDirs,
@@ -151,7 +150,7 @@ function TreeDir({ dir, getDirState, ensureDir, expandedDirs, toggleExpand, sele
         const isOpen = expandedDirs.has(key);
         return (
           <li key={key}>
-            <div role="treeitem" aria-expanded={isOpen} className="px-2 py-1 rounded cursor-pointer hover:bg-gray-50" onClick={() => toggleExpand(key)}>
+            <div role="treeitem" aria-expanded={isOpen} aria-selected={false} className="px-2 py-1 rounded cursor-pointer hover:bg-gray-50" onClick={() => toggleExpand(key)}>
               <span className="mr-1">{isOpen ? '📂' : '📁'}</span>
               {d.name}
             </div>

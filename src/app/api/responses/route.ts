@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createServerSupabase } from '@/app/lib/supabase/server';
+import { TranscriptLogger } from '@/app/lib/transcripts/logger';
 
 // Proxy endpoint for the OpenAI Responses API
 export async function POST(req: NextRequest) {
@@ -11,6 +12,10 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+  // Optional: capture model invocation metadata if caller passes it
+  const { _sessionId, _messageId, _invocationContext } = body || {};
+  const logger = new TranscriptLogger();
 
   if (body.text?.format?.type === 'json_schema') {
     return await structuredResponse(openai, body);
@@ -26,9 +31,45 @@ async function structuredResponse(openai: OpenAI, body: any) {
       stream: false,
     });
 
+    // Log model invocation when context is provided (non-blocking)
+    try {
+      if (body?._sessionId || body?._invocationContext) {
+        const startedMs = body?._invocationContext?.startedMs as number | undefined;
+        const latencyMs = startedMs ? Math.max(0, Date.now() - startedMs) : undefined;
+        const tokenUsage = (response as any)?.usage || {};
+        await logger.logModelInvocation({
+          sessionId: body?._sessionId,
+          messageId: body?._messageId,
+          provider: 'openai',
+          model: body?.model || 'unknown',
+          params: { temperature: body?.temperature, top_p: body?.top_p },
+          inputTokens: tokenUsage?.input_tokens,
+          outputTokens: tokenUsage?.output_tokens,
+          latencyMs,
+          success: true,
+          error: null,
+        });
+      }
+    } catch (e) {
+      console.warn('model_invocation logging failed', e);
+    }
+
     return NextResponse.json(response);
   } catch (err: any) {
     console.error('responses proxy error', err);
+    try {
+      if (body?._sessionId || body?._invocationContext) {
+        await logger.logModelInvocation({
+          sessionId: body?._sessionId,
+          messageId: body?._messageId,
+          provider: 'openai',
+          model: body?.model || 'unknown',
+          params: { temperature: body?.temperature, top_p: body?.top_p },
+          success: false,
+          error: { message: String(err?.message || err) },
+        });
+      }
+    } catch {}
     return NextResponse.json({ error: 'failed' }, { status: 500 }); 
   }
 }
@@ -40,9 +81,45 @@ async function textResponse(openai: OpenAI, body: any) {
       stream: false,
     });
 
+    // Log model invocation when context is provided (non-blocking)
+    try {
+      if (body?._sessionId || body?._invocationContext) {
+        const startedMs = body?._invocationContext?.startedMs as number | undefined;
+        const latencyMs = startedMs ? Math.max(0, Date.now() - startedMs) : undefined;
+        const tokenUsage = (response as any)?.usage || {};
+        await logger.logModelInvocation({
+          sessionId: body?._sessionId,
+          messageId: body?._messageId,
+          provider: 'openai',
+          model: body?.model || 'unknown',
+          params: { temperature: body?.temperature, top_p: body?.top_p },
+          inputTokens: tokenUsage?.input_tokens,
+          outputTokens: tokenUsage?.output_tokens,
+          latencyMs,
+          success: true,
+          error: null,
+        });
+      }
+    } catch (e) {
+      console.warn('model_invocation logging failed', e);
+    }
+
     return NextResponse.json(response);
   } catch (err: any) {
     console.error('responses proxy error', err);
+    try {
+      if (body?._sessionId || body?._invocationContext) {
+        await logger.logModelInvocation({
+          sessionId: body?._sessionId,
+          messageId: body?._messageId,
+          provider: 'openai',
+          model: body?.model || 'unknown',
+          params: { temperature: body?.temperature, top_p: body?.top_p },
+          success: false,
+          error: { message: String(err?.message || err) },
+        });
+      }
+    } catch {}
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }
 }
