@@ -33,7 +33,6 @@ export default function LoginPage() {
     <div style={{ padding: 24 }}>
       <h1>Sign In</h1>
       <p>Use Google to continue.</p>
-      <p>After login you will be redirected to: <code>{nextPath}</code></p>
       <button onClick={handleGoogle} style={{ padding: 8, border: '1px solid #ccc', borderRadius: 6 }}>
         Continue with Google
       </button>

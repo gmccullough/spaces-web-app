@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
 import Image from "next/image";
+import { createBrowserSupabase } from "@/app/lib/supabase/client";
 
 // UI components
 import Transcript from "./components/Transcript";
@@ -35,6 +36,7 @@ import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
 function App() {
   const searchParams = useSearchParams()!;
+  const supabase = React.useMemo(() => createBrowserSupabase(), []);
 
   // ---------------------------------------------------------------------
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
@@ -393,6 +395,15 @@ function App() {
     window.location.replace(url.toString());
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
+  };
+
   useEffect(() => {
     const storedPushToTalkUI = localStorage.getItem("pushToTalkUI");
     if (storedPushToTalkUI) {
@@ -482,18 +493,24 @@ function App() {
         >
           <div>
             <Image
-              src="/openai-logomark.svg"
-              alt="OpenAI Logo"
-              width={20}
-              height={20}
+              src="/spaces-logo.png"
+              alt="Spaces Logo"
+              width={24}
+              height={24}
               className="mr-2"
+              priority
             />
           </div>
-          <div>
-            Realtime API <span className="text-gray-500">Agents</span>
-          </div>
+          <div>Spaces</div>
         </div>
-        <div />
+        <div>
+          <button
+            onClick={handleLogout}
+            className="text-sm rounded-md border border-gray-300 px-3 py-1 hover:bg-gray-50"
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
