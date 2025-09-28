@@ -316,3 +316,19 @@ coverageThreshold: {
 ---
 
 *This testing strategy should be updated as the domain evolves and new features are added.*
+
+## Spaces File IO (New Coverage)
+
+### Tests That Must Pass for Completion
+- Auth gating on all three endpoints returns 401 unauthenticated
+- Read/Write/List behavior correct under authenticated session (manual verified)
+
+### New Tests Required
+- Unit: path normalization and traversal prevention (`tests/spaces/storage-paths.unit.test.ts`)
+- Integration: unauthenticated responses for list/read/write (`tests/spaces/files-api.integration.test.ts`)
+
+### Local Execution
+```bash
+npm run test:unit -- tests/spaces/storage-paths.unit.test.ts
+npm run test:integration -- tests/spaces/files-api.integration.test.ts
+```
