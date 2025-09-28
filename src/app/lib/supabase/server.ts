@@ -12,27 +12,36 @@ export async function createServerSupabase() {
           return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, options: any) {
-          cookieStore.set({
-            name,
-            value,
-            httpOnly: options?.httpOnly ?? true,
-            sameSite: options?.sameSite ?? 'lax',
-            secure: options?.secure ?? false,
-            path: options?.path ?? '/',
-            expires: options?.expires,
-            maxAge: options?.maxAge,
-          });
+          try {
+            cookieStore.set({
+              name,
+              value,
+              httpOnly: options?.httpOnly ?? true,
+              sameSite: options?.sameSite ?? 'lax',
+              secure: options?.secure ?? false,
+              path: options?.path ?? '/',
+              expires: options?.expires,
+              maxAge: options?.maxAge,
+            });
+          } catch (_) {
+            // In non-Route Handler/server action contexts, cookies.set throws.
+            // Ignore writes; reads still work for auth.getUser().
+          }
         },
         remove(name: string, options: any) {
-          cookieStore.set({
-            name,
-            value: '',
-            httpOnly: options?.httpOnly ?? true,
-            sameSite: options?.sameSite ?? 'lax',
-            secure: options?.secure ?? false,
-            path: options?.path ?? '/',
-            maxAge: 0,
-          });
+          try {
+            cookieStore.set({
+              name,
+              value: '',
+              httpOnly: options?.httpOnly ?? true,
+              sameSite: options?.sameSite ?? 'lax',
+              secure: options?.secure ?? false,
+              path: options?.path ?? '/',
+              maxAge: 0,
+            });
+          } catch (_) {
+            // Ignore in disallowed contexts
+          }
         },
       },
     }

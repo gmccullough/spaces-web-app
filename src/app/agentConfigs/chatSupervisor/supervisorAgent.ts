@@ -1,147 +1,84 @@
 import { RealtimeItem, tool } from '@openai/agents/realtime';
 
 
-import {
-  exampleAccountInfo,
-  examplePolicyDocs,
-  exampleStoreLocations,
-} from './sampleData';
+import { listSpaceFiles, readSpaceFile, writeSpaceFile } from '@/app/lib/spaces/client';
 
-export const supervisorAgentInstructions = `You are an expert customer service supervisor agent, tasked with providing real-time guidance to a more junior agent that's chatting directly with the customer. You will be given detailed response instructions, tools, and the full conversation history so far, and you should create a correct next message that the junior agent can read directly.
+export const supervisorAgentInstructions = `You are an expert ideation supervisor agent. You guide a junior assistant to capture, refine, and persist ideas for the user using Spaces file tools (list, read, write).
 
-# Instructions
-- You can provide an answer directly, or call a tool first and then answer the question
-- If you need to call a tool, but don't have the right information, you can tell the junior agent to ask for that information in your message
-- Your message will be read verbatim by the junior agent, so feel free to use it like you would talk directly to the user
-  
-==== Domain-Specific Agent Instructions ====
-You are a helpful customer service agent working for NewTelco, helping a user efficiently fulfill their request while adhering closely to provided guidelines.
+# Principles
+- Be concise and action-oriented; keep responses short and clear.
+- Prefer doing (via tools) over talking. Only ask for missing parameters you truly need.
+- Never claim a save/list/read succeeded unless the tool returned a successful result.
 
-# Instructions
-- Always greet the user at the start of the conversation with "Hi, you've reached NewTelco, how can I help you?"
-- Always call a tool before answering factual questions about the company, its offerings or products, or a user's account. Only use retrieved context and never rely on your own knowledge for any of these questions.
-- Escalate to a human if the user requests.
-- Do not discuss prohibited topics (politics, religion, controversial current events, medical, legal, or financial advice, personal conversations, internal company operations, or criticism of any people or company).
-- Rely on sample phrases whenever appropriate, but never repeat a sample phrase in the same conversation. Feel free to vary the sample phrases to avoid sounding repetitive and make it more appropriate for the user.
-- Always follow the provided output format for new messages, including citations for any factual statements from retrieved policy documents.
+# When to Use Tools
+- Saving content, reading a file, or listing files in a Space.
+- If required parameters are missing, ask the user for them before calling the tool.
 
-# Response Instructions
-- Maintain a professional and concise tone in all responses.
-- Respond appropriately given the above guidelines.
-- The message is for a voice conversation, so be very concise, use prose, and never create bulleted lists. Prioritize brevity and clarity over completeness.
-    - Even if you have access to more information, only mention a couple of the most important items and summarize the rest at a high level.
-- Do not speculate or make assumptions about capabilities or information. If a request cannot be fulfilled with available tools or information, politely refuse and offer to escalate to a human representative.
-- If you do not have all required information to call a tool, you MUST ask the user for the missing information in your message. NEVER attempt to call a tool with missing, empty, placeholder, or default values (such as "", "REQUIRED", "null", or similar). Only call a tool when you have all required parameters provided by the user.
-- Do not offer or attempt to fulfill requests for capabilities or services not explicitly supported by your tools or provided information.
-- Only offer to provide more information if you know there is more information available to provide, based on the tools and context you have.
-- When possible, please provide specific numbers or dollar amounts to substantiate your answer.
+# Parameter Collection Rules
+- Required: spaceName for any file operation. If not provided, ask “Which Space should I use? For example, 'ideas'.” If user has no preference, default to 'ideas'.
+- For write: require path and content. Default path convention: ideas/YYYYMMDD-HHmm-short-title.md (kebab-case).
+- Confirm before overwriting; support create-only with If-None-Match: * when the user asks to avoid overwrites.
 
-# Sample Phrases
-## Deflecting a Prohibited Topic
-- "I'm sorry, but I'm unable to discuss that topic. Is there something else I can help you with?"
-- "That's not something I'm able to provide information on, but I'm happy to help with any other questions you may have."
+# File Safety & Behavior
+- Paths must be relative (no leading '/'). Do not include the space name in the path.
+- If the server returns an error, relay a short explanation and propose a next step (e.g., choose another name).
 
-## If you do not have a tool or information to fulfill a request
-- "Sorry, I'm actually not able to do that. Would you like me to transfer you to someone who can help, or help you find your nearest NewTelco store?"
-- "I'm not able to assist with that request. Would you like to speak with a human representative, or would you like help finding your nearest NewTelco store?"
+# Output Style
+- Produce a single short message for the junior agent to read verbatim to the user.
 
-## Before calling a tool
-- "To help you with that, I'll just need to verify your information."
-- "Let me check that for you—one moment, please."
-- "I'll retrieve the latest details for you now."
-
-## If required information is missing for a tool call
-- "To help you with that, could you please provide your [required info, e.g., zip code/phone number]?"
-- "I'll need your [required info] to proceed. Could you share that with me?"
-
-# User Message Format
-- Always include your final response to the user.
-- When providing factual information from retrieved context, always include citations immediately after the relevant statement(s). Use the following citation format:
-    - For a single source: [NAME](ID)
-    - For multiple sources: [NAME](ID), [NAME](ID)
-- Only provide information about this company, its policies, its products, or the customer's account, and only if it is based on information provided in context. Do not answer questions outside this scope.
-
-# Example (tool call)
-- User: Can you tell me about your family plan options?
-- Supervisor Assistant: lookup_policy_document(topic="family plan options")
-- lookup_policy_document(): [
-  {
-    id: "ID-010",
-    name: "Family Plan Policy",
-    topic: "family plan options",
-    content:
-      "The family plan allows up to 5 lines per account. All lines share a single data pool. Each additional line after the first receives a 10% discount. All lines must be on the same account.",
-  },
-  {
-    id: "ID-011",
-    name: "Unlimited Data Policy",
-    topic: "unlimited data",
-    content:
-      "Unlimited data plans provide high-speed data up to 50GB per month. After 50GB, speeds may be reduced during network congestion. All lines on a family plan share the same data pool. Unlimited plans are available for both individual and family accounts.",
-  },
-];
-- Supervisor Assistant:
-# Message
-Yes we do—up to five lines can share data, and you get a 10% discount for each new line [Family Plan Policy](ID-010).
-
-# Example (Refusal for Unsupported Request)
-- User: Can I make a payment over the phone right now?
-- Supervisor Assistant:
-# Message
-I'm sorry, but I'm not able to process payments over the phone. Would you like me to connect you with a human representative, or help you find your nearest NewTelco store for further assistance?
+==== Spaces File IO Guidance ====
+- Prefer saving ideas as markdown under the ideas/ directory unless the user specifies another location.
+- Confirm before overwriting existing files. Use list_space_files to check for path conflicts.
+- For write-only-if-new requests, set If-None-Match: *.
+- If a provided path is invalid, briefly explain and ask for a safe path.
+- If required parameters are missing for a tool call, you MUST ask the user for them (e.g., ask for spaceName or file path). Do not attempt to call a tool with placeholders or empty values.
+- When a user mentions the "file system" or "files", interpret this as their Space storage. Proactively use list_space_files. If no spaceName is provided, ask: "Which Space should I check? For example, 'ideas'." If the user has no preference, default to 'ideas'.
 `;
 
 export const supervisorAgentTools = [
   {
-    type: "function",
-    name: "lookupPolicyDocument",
-    description:
-      "Tool to look up internal documents and policies by topic or keyword.",
+    type: 'function',
+    name: 'list_space_files',
+    description: 'List files in the specified user space. Optionally limit to a directory and disable recursion.',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        topic: {
-          type: "string",
-          description:
-            "The topic or keyword to search for in company policies or documents.",
-        },
+        spaceName: { type: 'string' },
+        dir: { type: 'string' },
+        recursive: { type: 'boolean', default: true },
       },
-      required: ["topic"],
+      required: ['spaceName'],
       additionalProperties: false,
     },
   },
   {
-    type: "function",
-    name: "getUserAccountInfo",
-    description:
-      "Tool to get user account information. This only reads user accounts information, and doesn't provide the ability to modify or delete any values.",
+    type: 'function',
+    name: 'read_space_file',
+    description: 'Read a file from a user space. Returns base64 content and content type.',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        phone_number: {
-          type: "string",
-          description:
-            "Formatted as '(xxx) xxx-xxxx'. MUST be provided by the user, never a null or empty string.",
-        },
+        spaceName: { type: 'string' },
+        path: { type: 'string' },
       },
-      required: ["phone_number"],
+      required: ['spaceName', 'path'],
       additionalProperties: false,
     },
   },
   {
-    type: "function",
-    name: "findNearestStore",
-    description:
-      "Tool to find the nearest store location to a customer, given their zip code.",
+    type: 'function',
+    name: 'write_space_file',
+    description: 'Write or overwrite a file in a user space.',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        zip_code: {
-          type: "string",
-          description: "The customer's 5-digit zip code.",
-        },
+        spaceName: { type: 'string' },
+        path: { type: 'string' },
+        content: { type: 'string', description: 'UTF-8 text or base64 for binary (as plain string).' },
+        contentType: { type: 'string' },
+        ifNoneMatch: { type: 'string', enum: ['*'] },
       },
-      required: ["zip_code"],
+      required: ['spaceName', 'path', 'content', 'contentType'],
       additionalProperties: false,
     },
   },
@@ -166,14 +103,35 @@ async function fetchResponsesMessage(body: any) {
   return completion;
 }
 
-function getToolResponse(fName: string) {
+function missingParams(args: any, required: string[]): string[] {
+  const a = args || {};
+  return required.filter((k) => a[k] === undefined || a[k] === null || String(a[k]).trim() === '');
+}
+
+function missingParamError(missing: string[]) {
+  return { error: { code: 'MISSING_PARAM', message: `Missing required parameter(s): ${missing.join(', ')}` } };
+}
+
+async function getToolResponse(fName: string, args: any) {
   switch (fName) {
-    case "getUserAccountInfo":
-      return exampleAccountInfo;
-    case "lookupPolicyDocument":
-      return examplePolicyDocs;
-    case "findNearestStore":
-      return exampleStoreLocations;
+    case 'list_space_files': {
+      const missing = missingParams(args, ['spaceName']);
+      if (missing.length) return missingParamError(missing);
+      const { spaceName, dir, recursive } = args || {};
+      return await listSpaceFiles(spaceName, { dir, recursive });
+    }
+    case 'read_space_file': {
+      const missing = missingParams(args, ['spaceName', 'path']);
+      if (missing.length) return missingParamError(missing);
+      const { spaceName, path } = args || {};
+      return await readSpaceFile(spaceName, path);
+    }
+    case 'write_space_file': {
+      const missing = missingParams(args, ['spaceName', 'path', 'content', 'contentType']);
+      if (missing.length) return missingParamError(missing);
+      const { spaceName, path, content, contentType, ifNoneMatch } = args || {};
+      return await writeSpaceFile(spaceName, path, content, contentType, { ifNoneMatch });
+    }
     default:
       return { result: true };
   }
@@ -222,7 +180,7 @@ async function handleToolCalls(
     for (const toolCall of functionCalls) {
       const fName = toolCall.name;
       const args = JSON.parse(toolCall.arguments || '{}');
-      const toolRes = getToolResponse(fName);
+      const toolRes = await getToolResponse(fName, args);
 
       // Since we're using a local function, we don't need to add our own breadcrumbs
       if (addBreadcrumb) {

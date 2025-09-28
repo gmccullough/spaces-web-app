@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/app/lib/supabase/server";
-import { getFile, putFile, resolveSpacePrefix, normalizeRelativePath } from "@/app/lib/spaces/storage";
+import { getFile, putFile } from "@/app/lib/spaces/storage";
+import { resolveSpacePrefix, normalizeRelativePath } from "@/app/lib/spaces/paths";
 
-export async function GET(req: NextRequest, { params }: { params: { name: string; path: string[] } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ name: string; path: string[] }> }) {
   try {
     const supabase = await createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
@@ -10,11 +11,12 @@ export async function GET(req: NextRequest, { params }: { params: { name: string
       return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 401 });
     }
 
-    const relPath = normalizeRelativePath((params.path || []).join("/"));
+    const { name, path } = await context.params;
+    const relPath = normalizeRelativePath((path || []).join("/"));
     if (!relPath) {
       return NextResponse.json({ error: { code: "INVALID_PATH", message: "Empty path" } }, { status: 400 });
     }
-    const objectKey = resolveSpacePrefix(user.id, params.name) + relPath;
+    const objectKey = resolveSpacePrefix(user.id, name) + relPath;
     const { bytes, contentType } = await getFile(objectKey);
     return new NextResponse(Buffer.from(bytes), {
       status: 200,
@@ -33,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: { name: string
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { name: string; path: string[] } }) {
+export async function PUT(req: NextRequest, context: { params: Promise<{ name: string; path: string[] }> }) {
   try {
     const supabase = await createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
@@ -41,14 +43,15 @@ export async function PUT(req: NextRequest, { params }: { params: { name: string
       return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 401 });
     }
 
-    const relPath = normalizeRelativePath((params.path || []).join("/"));
+    const { name, path } = await context.params;
+    const relPath = normalizeRelativePath((path || []).join("/"));
     if (!relPath) {
       return NextResponse.json({ error: { code: "INVALID_PATH", message: "Empty path" } }, { status: 400 });
     }
 
     const contentType = req.headers.get("content-type") || "";
     const ifNoneMatch = req.headers.get("if-none-match") as '*' | null;
-    const objectKey = resolveSpacePrefix(user.id, params.name) + relPath;
+    const objectKey = resolveSpacePrefix(user.id, name) + relPath;
     const arrayBuffer = await req.arrayBuffer();
     const result = await putFile(objectKey, arrayBuffer, contentType, { ifNoneMatch: ifNoneMatch === '*' ? '*' : undefined });
     const status = ifNoneMatch === '*' ? 201 : 200;

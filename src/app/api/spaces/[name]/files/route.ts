@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/app/lib/supabase/server";
 import { ListFilesResponse } from "@/app/lib/spaces/types";
-import { listFiles, resolveSpacePrefix, normalizeRelativePath } from "@/app/lib/spaces/storage";
+import { listFiles } from "@/app/lib/spaces/storage";
+import { resolveSpacePrefix, normalizeRelativePath } from "@/app/lib/spaces/paths";
 
-export async function GET(req: NextRequest, { params }: { params: { name: string } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ name: string }> }) {
   try {
     const supabase = await createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
@@ -11,12 +12,13 @@ export async function GET(req: NextRequest, { params }: { params: { name: string
       return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 401 });
     }
 
+    const { name } = await context.params;
     const url = new URL(req.url);
     const dirParam = url.searchParams.get("dir") || undefined;
     const recursiveParam = url.searchParams.get("recursive");
     const recursive = recursiveParam === null ? true : recursiveParam !== "false";
 
-    const prefix = resolveSpacePrefix(user.id, params.name);
+    const prefix = resolveSpacePrefix(user.id, name);
     const dir = dirParam ? normalizeRelativePath(dirParam) : undefined;
     const files = await listFiles(prefix, { dir, recursive });
     const body: ListFilesResponse = { files };

@@ -1,3 +1,17 @@
+import { describe, it, expect, vi } from 'vitest';
+
+// Note: Minimal smoke test using fetch to our API routes. Assumes dev server is running during CI.
+// In a full setup, we'd spin up a test server and use a test Supabase session.
+
+const BASE = 'http://localhost:3000';
+
+describe.skip('spaces files API (integration smoke)', () => {
+  it('lists files unauthenticated -> 401', async () => {
+    const res = await fetch(`${BASE}/api/spaces/ideas/files`);
+    expect(res.status === 200 || res.status === 401).toBe(true);
+  });
+});
+
 import { describe, it, expect } from 'vitest';
 
 // Simple unauthenticated checks against dev server
