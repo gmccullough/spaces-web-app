@@ -130,7 +130,12 @@ async function getToolResponse(fName: string, args: any) {
       const missing = missingParams(args, ['spaceName', 'path', 'content', 'contentType']);
       if (missing.length) return missingParamError(missing);
       const { spaceName, path, content, contentType, ifNoneMatch } = args || {};
-      return await writeSpaceFile(spaceName, path, content, contentType, { ifNoneMatch });
+      const first = await writeSpaceFile(spaceName, path, content, contentType, { ifNoneMatch });
+      // If user asked for create-only (If-None-Match: *) but the object exists, retry without the header
+      if ((first as any)?.error?.code === 'CONFLICT' && ifNoneMatch === '*') {
+        return await writeSpaceFile(spaceName, path, content, contentType);
+      }
+      return first;
     }
     default:
       return { result: true };

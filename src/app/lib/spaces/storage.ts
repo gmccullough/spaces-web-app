@@ -17,13 +17,29 @@ export async function listFiles(prefix: string, opts?: { dir?: string; recursive
   if (!recursive) {
     const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(base, { limit: 1000 });
     if (error) throw error;
-    return (data || []).filter(i => i.metadata /* files have metadata; folders typically do not */).map(i => ({
-      path: (dir + i.name),
-      name: i.name,
-      size: i.metadata?.size ?? 0,
-      contentType: i.metadata?.mimetype || undefined,
-      updatedAt: i.updated_at || undefined,
-    }));
+    const entries: FileEntry[] = [];
+    for (const i of data || []) {
+      if (!i.metadata) {
+        // directory
+        entries.push({
+          path: (dir + i.name),
+          name: i.name,
+          size: 0,
+          isDirectory: true,
+          updatedAt: i.updated_at || undefined,
+        } as any);
+      } else {
+        entries.push({
+          path: (dir + i.name),
+          name: i.name,
+          size: i.metadata?.size ?? 0,
+          contentType: i.metadata?.mimetype || undefined,
+          updatedAt: i.updated_at || undefined,
+          isDirectory: false,
+        } as any);
+      }
+    }
+    return entries;
   }
 
   // Recursive: list current and subfolders by traversing
@@ -45,7 +61,8 @@ export async function listFiles(prefix: string, opts?: { dir?: string; recursive
           size: item.metadata?.size ?? 0,
           contentType: item.metadata?.mimetype || undefined,
           updatedAt: item.updated_at || undefined,
-        });
+          isDirectory: false,
+        } as any);
       }
     }
   }

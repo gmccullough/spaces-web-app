@@ -9,7 +9,8 @@ import { createBrowserSupabase } from "@/app/lib/supabase/client";
 // UI components
 import Transcript from "./components/Transcript";
 import Events from "./components/Events";
-import BottomToolbar from "./components/BottomToolbar";
+import Toolbar from "./components/Toolbar";
+import SpacesFilesPanel from "./components/SpacesFilesPanel";
 
 // Types
 import { SessionStatus } from "@/app/types";
@@ -406,7 +407,11 @@ function App() {
 
   useEffect(() => {
     const storedPushToTalkUI = localStorage.getItem("pushToTalkUI");
-    if (storedPushToTalkUI) {
+    // Default to ON so the app is not listening after reloads (PTT required)
+    if (storedPushToTalkUI === null) {
+      setIsPTTActive(true);
+      localStorage.setItem("pushToTalkUI", "true");
+    } else {
       setIsPTTActive(storedPushToTalkUI === "true");
     }
     const storedLogsExpanded = localStorage.getItem("logsExpanded");
@@ -485,35 +490,37 @@ function App() {
   }, [sessionStatus]);
 
   return (
-    <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
-      <div className="p-5 text-lg font-semibold flex justify-between items-center">
-        <div
-          className="flex items-center cursor-pointer"
-          onClick={() => window.location.reload()}
-        >
-          <div>
-            <Image
-              src="/spaces-logo.png"
-              alt="Spaces Logo"
-              width={24}
-              height={24}
-              className="mr-2"
-              priority
-            />
-          </div>
-          <div>Spaces</div>
-        </div>
-        <div>
-          <button
-            onClick={handleLogout}
-            className="text-sm rounded-md border border-gray-300 px-3 py-1 hover:bg-gray-50"
-          >
-            Log out
-          </button>
-        </div>
+    <div className="text-base flex flex-col min-h-screen bg-gray-100 text-gray-800 relative">
+      {/* Header removed; logo moved into Toolbar */}
+
+      <div className="px-2 pb-2">
+        <Toolbar
+          sessionStatus={sessionStatus}
+          onToggleConnection={onToggleConnection}
+          isPTTActive={isPTTActive}
+          setIsPTTActive={setIsPTTActive}
+          isPTTUserSpeaking={isPTTUserSpeaking}
+          handleTalkButtonDown={handleTalkButtonDown}
+          handleTalkButtonUp={handleTalkButtonUp}
+          isEventsPaneExpanded={isEventsPaneExpanded}
+          setIsEventsPaneExpanded={setIsEventsPaneExpanded}
+          isAudioPlaybackEnabled={isAudioPlaybackEnabled}
+          setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
+          codec={urlCodec}
+          onCodecChange={handleCodecChange}
+          inputDevices={inputDevices}
+          selectedInputDeviceId={selectedInputDeviceId}
+          onInputDeviceChange={setSelectedInputDeviceId}
+          onLogoClick={() => window.location.reload()}
+          onLogout={handleLogout}
+        />
       </div>
 
-      <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
+      <div className="px-2 pb-2">
+        <SpacesFilesPanel />
+      </div>
+
+      <div className="flex flex-1 gap-2 px-2 relative flex-col md:flex-row overflow-visible md:overflow-hidden min-h-0">
         <Transcript
           userText={userText}
           setUserText={setUserText}
@@ -527,24 +534,7 @@ function App() {
         <Events isExpanded={isEventsPaneExpanded} />
       </div>
 
-      <BottomToolbar
-        sessionStatus={sessionStatus}
-        onToggleConnection={onToggleConnection}
-        isPTTActive={isPTTActive}
-        setIsPTTActive={setIsPTTActive}
-        isPTTUserSpeaking={isPTTUserSpeaking}
-        handleTalkButtonDown={handleTalkButtonDown}
-        handleTalkButtonUp={handleTalkButtonUp}
-        isEventsPaneExpanded={isEventsPaneExpanded}
-        setIsEventsPaneExpanded={setIsEventsPaneExpanded}
-        isAudioPlaybackEnabled={isAudioPlaybackEnabled}
-        setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
-        codec={urlCodec}
-        onCodecChange={handleCodecChange}
-        inputDevices={inputDevices}
-        selectedInputDeviceId={selectedInputDeviceId}
-        onInputDeviceChange={setSelectedInputDeviceId}
-      />
+      
     </div>
   );
 }

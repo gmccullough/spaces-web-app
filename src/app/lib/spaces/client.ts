@@ -6,6 +6,7 @@ type FileEntry = {
   size: number;
   contentType?: string;
   updatedAt?: string;
+  isDirectory?: boolean;
 };
 
 type ListFilesResponse = { files: FileEntry[] };
@@ -83,7 +84,12 @@ export async function writeSpaceFile(
     (headers as any)["If-None-Match"] = '*';
   }
   const body = new TextEncoder().encode(content);
-  const res = await fetch(url, { method: "PUT", headers, body });
+  let res = await fetch(url, { method: "PUT", headers, body });
+  // If client sent If-None-Match: * but server reports conflict, retry once without the conditional to perform an overwrite.
+  if (res.status === 409 && opts?.ifNoneMatch === '*') {
+    const overwriteHeaders: HeadersInit = await authHeaders({ "Content-Type": contentType });
+    res = await fetch(url, { method: "PUT", headers: overwriteHeaders, body });
+  }
   if (!res.ok) {
     try { return (await res.json()) as ErrorEnvelope; } catch { return { error: { code: "HTTP_ERROR", message: String(res.status) } }; }
   }

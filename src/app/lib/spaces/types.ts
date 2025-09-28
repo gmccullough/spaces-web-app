@@ -4,6 +4,7 @@ export type FileEntry = {
   size: number;
   contentType?: string;
   updatedAt?: string;
+  isDirectory?: boolean;
 };
 
 export type ListFilesResponse = { files: FileEntry[] };
