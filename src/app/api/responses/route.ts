@@ -13,10 +13,6 @@ export async function POST(req: NextRequest) {
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  // Optional: capture model invocation metadata if caller passes it
-  const { _sessionId, _messageId, _invocationContext } = body || {};
-  const logger = new TranscriptLogger();
-
   if (body.text?.format?.type === 'json_schema') {
     return await structuredResponse(openai, body);
   } else {
@@ -33,6 +29,7 @@ async function structuredResponse(openai: OpenAI, body: any) {
 
     // Log model invocation when context is provided (non-blocking)
     try {
+      const logger = new TranscriptLogger();
       if (body?._sessionId || body?._invocationContext) {
         const startedMs = body?._invocationContext?.startedMs as number | undefined;
         const latencyMs = startedMs ? Math.max(0, Date.now() - startedMs) : undefined;
@@ -58,6 +55,7 @@ async function structuredResponse(openai: OpenAI, body: any) {
   } catch (err: any) {
     console.error('responses proxy error', err);
     try {
+      const logger = new TranscriptLogger();
       if (body?._sessionId || body?._invocationContext) {
         await logger.logModelInvocation({
           sessionId: body?._sessionId,
@@ -83,6 +81,7 @@ async function textResponse(openai: OpenAI, body: any) {
 
     // Log model invocation when context is provided (non-blocking)
     try {
+      const logger = new TranscriptLogger();
       if (body?._sessionId || body?._invocationContext) {
         const startedMs = body?._invocationContext?.startedMs as number | undefined;
         const latencyMs = startedMs ? Math.max(0, Date.now() - startedMs) : undefined;
@@ -108,6 +107,7 @@ async function textResponse(openai: OpenAI, body: any) {
   } catch (err: any) {
     console.error('responses proxy error', err);
     try {
+      const logger = new TranscriptLogger();
       if (body?._sessionId || body?._invocationContext) {
         await logger.logModelInvocation({
           sessionId: body?._sessionId,
