@@ -5,10 +5,16 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const next = url.searchParams.get('next') || '/demo';
+  // Sanitize next to avoid open redirects; only allow relative paths
+  const rawNext = url.searchParams.get('next') || '/demo';
+  const next = /^\//.test(rawNext) ? rawNext : '/demo';
 
   // Prepare response we can attach cookies to
-  const response = NextResponse.redirect(new URL(next, url.origin));
+  // On Render, request.url may have origin https://localhost:10000 due to internal port proxy.
+  // Prefer the public site URL if provided.
+  const publicOrigin = process.env.NEXT_PUBLIC_SITE_URL;
+  const origin = publicOrigin || url.origin;
+  const response = NextResponse.redirect(new URL(next, origin));
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
