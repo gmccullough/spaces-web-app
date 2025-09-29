@@ -16,6 +16,8 @@ interface ToolbarProps {
   setIsAudioPlaybackEnabled: (val: boolean) => void;
   codec: string;
   onCodecChange: (newCodec: string) => void;
+  voice: string;
+  onVoiceChange: (newVoice: string) => void;
   inputDevices: Array<{ deviceId: string; label: string }>;
   selectedInputDeviceId: string;
   onInputDeviceChange: (deviceId: string) => void;
@@ -37,6 +39,8 @@ function Toolbar({
   setIsAudioPlaybackEnabled,
   codec,
   onCodecChange,
+  voice,
+  onVoiceChange,
   inputDevices,
   selectedInputDeviceId,
   onInputDeviceChange,
@@ -49,6 +53,10 @@ function Toolbar({
 
   const handleCodecSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onCodecChange(e.target.value);
+  };
+
+  const handleVoiceSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onVoiceChange(e.target.value);
   };
 
   function getConnectionButtonLabel() {
@@ -164,6 +172,25 @@ function Toolbar({
             <option value="opus">Opus (48 kHz)</option>
             <option value="pcmu">PCMU (8 kHz)</option>
             <option value="pcma">PCMA (8 kHz)</option>
+          </select>
+        </div>
+
+        <div className="flex flex-row items-center gap-2 max-w-full">
+          <div>Voice:</div>
+          <select
+            id="voice-select"
+            value={voice}
+            onChange={handleVoiceSelectChange}
+            className="border border-gray-300 rounded-md px-2 py-1 focus:outline-none cursor-pointer max-w-[12rem]"
+          >
+            <option value="alloy">alloy</option>
+            <option value="ash">ash</option>
+            <option value="ballad">ballad</option>
+            <option value="coral">coral</option>
+            <option value="echo">echo</option>
+            <option value="sage">sage</option>
+            <option value="shimmer">shimmer</option>
+            <option value="verse">verse</option>
           </select>
         </div>
 

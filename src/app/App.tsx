@@ -67,6 +67,7 @@ function App() {
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
+  const reconnectOnVoiceChangeRef = useRef(false);
 
   const sdkAudioElement = React.useMemo(() => {
     if (typeof window === 'undefined') return undefined;
@@ -120,6 +121,10 @@ function App() {
       return stored ? stored === 'true' : true;
     },
   );
+  const [selectedVoice, setSelectedVoice] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'sage';
+    return localStorage.getItem('voice') || 'sage';
+  });
 
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
@@ -196,21 +201,12 @@ function App() {
   }, [selectedInputDeviceId]);
 
   useEffect(() => {
-    let finalAgentConfig = searchParams.get("agentConfig");
-    if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
-      finalAgentConfig = defaultAgentSetKey;
-      const url = new URL(window.location.toString());
-      url.searchParams.set("agentConfig", finalAgentConfig);
-      window.location.replace(url.toString());
-      return;
-    }
-
-    const agents = allAgentSets[finalAgentConfig];
+    const agents = allAgentSets[defaultAgentSetKey];
     const agentKeyToUse = agents[0]?.name || "";
 
     setSelectedAgentName(agentKeyToUse);
     setSelectedAgentConfigSet(agents);
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     if (selectedAgentName && sessionStatus === "DISCONNECTED") {
@@ -257,7 +253,7 @@ function App() {
   };
 
   const connectToRealtime = async () => {
-    const agentSetKey = searchParams.get("agentConfig") || "default";
+    const agentSetKey = defaultAgentSetKey;
     if (sdkScenarioMap[agentSetKey]) {
       if (sessionStatus !== "DISCONNECTED") return;
       setSessionStatus("CONNECTING");
@@ -274,6 +270,38 @@ function App() {
           reorderedAgents.unshift(agent);
         }
 
+        // Ensure the root agent uses the selected voice for this connection
+        try {
+          const root = reorderedAgents[0] as any;
+          if (root && selectedVoice) {
+            root.voice = selectedVoice;
+          }
+        } catch {}
+
+        // Ensure mic stream is live before connecting (some browsers end tracks on PC close)
+        let micStreamToUse = selectedMicStream;
+        const needsNewMic =
+          !micStreamToUse ||
+          !micStreamToUse.active ||
+          micStreamToUse.getAudioTracks().length === 0 ||
+          micStreamToUse.getAudioTracks().every((t) => t.readyState !== 'live');
+
+        if (needsNewMic) {
+          try {
+            const constraints: MediaStreamConstraints = {
+              audio: selectedInputDeviceId && selectedInputDeviceId !== 'default'
+                ? { deviceId: { exact: selectedInputDeviceId } as ConstrainDOMString }
+                : true,
+            };
+            const fresh = await navigator.mediaDevices.getUserMedia(constraints);
+            micStreamToUse = fresh;
+            setSelectedMicStream(fresh);
+          } catch (err) {
+            console.error('Failed to reacquire microphone stream for reconnect', err);
+            micStreamToUse = undefined;
+          }
+        }
+
         const companyName = chatSupervisorCompanyName;
         const guardrail = createModerationGuardrail(companyName);
 
@@ -281,7 +309,7 @@ function App() {
           getEphemeralKey: async () => EPHEMERAL_KEY,
           initialAgents: reorderedAgents,
           audioElement: sdkAudioElement,
-          mediaStream: selectedMicStream,
+          mediaStream: micStreamToUse,
           outputGuardrails: [guardrail],
           extraContext: {
             addTranscriptBreadcrumb,
@@ -312,6 +340,13 @@ function App() {
 
   const disconnectFromRealtime = () => {
     disconnect();
+    // Clear any existing remote stream from the audio element to avoid overlap
+    try {
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current.srcObject = null;
+      }
+    } catch {}
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
   };
@@ -362,6 +397,7 @@ function App() {
       type: 'session.update',
       session: {
         turn_detection: turnDetection,
+        voice: selectedVoice,
       },
     });
 
@@ -371,6 +407,34 @@ function App() {
     }
     return;
   }
+
+  useEffect(() => {
+    localStorage.setItem('voice', selectedVoice);
+  }, [selectedVoice]);
+
+  useEffect(() => {
+    if (sessionStatus === 'DISCONNECTED' && reconnectOnVoiceChangeRef.current) {
+      reconnectOnVoiceChangeRef.current = false;
+      // Small delay to ensure previous peer connection fully closes before reconnect
+      setTimeout(() => {
+        connectToRealtime();
+      }, 150);
+    }
+  }, [sessionStatus]);
+
+  const handleVoiceChange = (newVoice: string) => {
+    // Persist immediately
+    try { localStorage.setItem('voice', newVoice); } catch {}
+    if (sessionStatus === 'CONNECTED' || sessionStatus === 'CONNECTING') {
+      try { interrupt(); } catch {}
+      reconnectOnVoiceChangeRef.current = true;
+      handoffTriggeredRef.current = true; // avoid auto-greet on reconnect
+      setSelectedVoice(newVoice);
+      disconnectFromRealtime();
+      return;
+    }
+    setSelectedVoice(newVoice);
+  };
 
   const handleSendTextMessage = () => {
     if (!userText.trim()) return;
@@ -546,6 +610,8 @@ function App() {
           setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
           codec={urlCodec}
           onCodecChange={handleCodecChange}
+          voice={selectedVoice}
+          onVoiceChange={handleVoiceChange}
           inputDevices={inputDevices}
           selectedInputDeviceId={selectedInputDeviceId}
           onInputDeviceChange={setSelectedInputDeviceId}
