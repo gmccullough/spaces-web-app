@@ -10,6 +10,8 @@ import Transcript from "./components/Transcript";
 import Events from "./components/Events";
 import Toolbar from "./components/Toolbar";
 import SpacesFilesPanel from "./components/SpacesFilesPanel";
+import SpacePickerModal from "./components/SpacePickerModal";
+import { SpaceSelectionProvider, useSpaceSelection } from "./contexts/SpaceSelectionContext";
 
 // Types
 import { SessionStatus } from "@/app/types";
@@ -34,7 +36,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
-function App() {
+function AppInner() {
   const searchParams = useSearchParams()!;
   const supabase = React.useMemo(() => createBrowserSupabase(), []);
 
@@ -208,11 +210,13 @@ function App() {
     setSelectedAgentConfigSet(agents);
   }, []);
 
+  const { hasMadeInitialSelection, selectedSpaceName } = useSpaceSelection();
+
   useEffect(() => {
-    if (selectedAgentName && sessionStatus === "DISCONNECTED") {
+    if (selectedAgentName && sessionStatus === "DISCONNECTED" && hasMadeInitialSelection) {
       connectToRealtime();
     }
-  }, [selectedAgentName]);
+  }, [selectedAgentName, hasMadeInitialSelection]);
 
   useEffect(() => {
     if (
@@ -224,11 +228,14 @@ function App() {
         (a) => a.name === selectedAgentName
       );
       addTranscriptBreadcrumb(`Agent: ${selectedAgentName}`, currentAgent);
+      if (selectedSpaceName) {
+        addTranscriptBreadcrumb(`Space: ${selectedSpaceName}`);
+      }
       updateSession(!handoffTriggeredRef.current);
       // Reset flag after handling so subsequent effects behave normally
       handoffTriggeredRef.current = false;
     }
-  }, [selectedAgentConfigSet, selectedAgentName, sessionStatus]);
+  }, [selectedAgentConfigSet, selectedAgentName, sessionStatus, selectedSpaceName]);
 
   useEffect(() => {
     if (sessionStatus === "CONNECTED") {
@@ -401,9 +408,13 @@ function App() {
       },
     });
 
-    // Send an initial 'hi' message to trigger the agent to greet the user
+    // Send an initial priming message to trigger the agent
     if (shouldTriggerResponse) {
-      sendSimulatedUserMessage('hi');
+      if (selectedSpaceName) {
+        sendSimulatedUserMessage(`Use the Space "${selectedSpaceName}" for file operations.`);
+      } else {
+        sendSimulatedUserMessage('hi');
+      }
     }
     return;
   }
@@ -435,6 +446,17 @@ function App() {
     }
     setSelectedVoice(newVoice);
   };
+
+  // If user switches space mid-session, prime the assistant
+  useEffect(() => {
+    if (sessionStatus === 'CONNECTED' && hasMadeInitialSelection && selectedSpaceName !== null) {
+      addTranscriptBreadcrumb(`Space: ${selectedSpaceName || 'Just talk'}`);
+      if (selectedSpaceName) {
+        sendSimulatedUserMessage(`Switch to the Space "${selectedSpaceName}" for file operations.`);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSpaceName]);
 
   const handleSendTextMessage = () => {
     if (!userText.trim()) return;
@@ -643,4 +665,44 @@ function App() {
   );
 }
 
+function App() {
+  return (
+    <SpaceSelectionProvider>
+      <ModalPortalWrapper />
+      <HideUIUntilSelection>
+        <AppInner />
+      </HideUIUntilSelection>
+    </SpaceSelectionProvider>
+  );
+}
+
+function ModalPortalWrapper() {
+  const { isPickerOpen, isFirstLoadBlocking, selectJustTalk, selectSpace, closePicker } = useSpaceSelection();
+
+  React.useEffect(() => {
+    const handler = () => closePicker();
+    window.addEventListener('spaces:closePicker', handler);
+    return () => window.removeEventListener('spaces:closePicker', handler);
+  }, [closePicker]);
+
+  // Always render to ensure focus trap and first-load overlay
+  return (
+    <SpacePickerModal
+      isOpen={isPickerOpen}
+      isBlocking={isFirstLoadBlocking}
+      onSelectJustTalk={selectJustTalk}
+      onSelectSpace={selectSpace}
+    />
+  );
+}
+
 export default App;
+
+function HideUIUntilSelection({ children }: { children: React.ReactNode }) {
+  const { hasMadeInitialSelection } = useSpaceSelection();
+  if (!hasMadeInitialSelection) {
+    // Hide content behind modal during first-load selection
+    return null;
+  }
+  return <>{children}</>;
+}

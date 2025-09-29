@@ -52,7 +52,7 @@ describe('spaces client wrappers', () => {
     expect(calledWith).toBeTruthy();
   });
 
-  it('listSpaces includes bearer auth and parses response', async () => {
+it('listSpaces includes bearer auth and parses response', async () => {
     const payload = { spaces: ['ideas', 'notes'], items: [{ name: 'ideas', lastUpdatedAt: '2025-09-29T12:00:00Z' }] };
     const fetchSpy = vi.spyOn(global, 'fetch' as any).mockResolvedValueOnce(new Response(JSON.stringify(payload), { status: 200 }));
     const res = await listSpaces();
@@ -62,6 +62,23 @@ describe('spaces client wrappers', () => {
     expect(String(url)).toBe('/api/spaces');
     expect((init!.headers as any).Authorization).toBe('Bearer TEST_TOKEN');
   });
+
+it('listSpaces items are newest to oldest when timestamps provided', async () => {
+  const payload = { items: [
+    { name: 'a', lastUpdatedAt: '2025-01-01T00:00:00Z' },
+    { name: 'b', lastUpdatedAt: '2025-09-29T12:00:00Z' },
+    { name: 'c', lastUpdatedAt: '2025-06-01T00:00:00Z' },
+  ], spaces: ['b', 'c', 'a'] };
+  vi.spyOn(global, 'fetch' as any).mockResolvedValueOnce(new Response(JSON.stringify(payload), { status: 200 }));
+  const res = await listSpaces();
+  if ('error' in (res as any)) throw new Error('unexpected error');
+  const items = (res as any).items as Array<{ name: string; lastUpdatedAt: string }>;
+  if (items && items.length > 1) {
+    const ts = items.map((i) => i.lastUpdatedAt ? new Date(i.lastUpdatedAt).getTime() : 0);
+    const sorted = [...ts].sort((a, b) => b - a);
+    expect(ts).toEqual(sorted);
+  }
+});
 
   it('createSpace posts name with bearer auth', async () => {
     const fetchSpy = vi.spyOn(global, 'fetch' as any).mockResolvedValueOnce(new Response(JSON.stringify({ created: true }), { status: 201 }));

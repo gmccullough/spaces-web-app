@@ -1,4 +1,4 @@
-# TODO - Spaces Picker Modal and Header Flow
+# Spaces Picker Modal and Header Flow
 
 ## Executive Summary & Scope
 **Objective**: Replace the current spaces dropdown with a breadcrumb header "Spaces > [space name]" and a Space Picker modal shown on first load (before conversation init). Modal offers an oversized "Just talk" button and a chronologically sorted list of existing spaces (newest → oldest). Selection gates conversation initialization: "Just talk" follows today’s default flow; selecting a space primes the conversation with that space.
@@ -19,42 +19,42 @@
 ## Implementation Plan
 
 ### Phase 1: Foundation and UX wiring
-- [ ] Add `SpaceSelectionContext` to manage selection and gating state: `selectedSpace`, `hasMadeInitialSelection`, `isFirstLoadBlocking`, `openPicker()`, `closePicker()`, `selectJustTalk()`, `selectSpace()`.
-- [ ] Render breadcrumb header `Spaces > [Selected or "Just talk"]` in the main layout.
-- [ ] Make the `Spaces` crumb a button with proper keyboard and ARIA labeling to open the modal.
-- [ ] Ensure SSR/CSR alignment to avoid flicker: initial `isFirstLoadBlocking` computed before conversation init.
+- [x] Add `SpaceSelectionContext` to manage selection and gating state: `selectedSpace`, `hasMadeInitialSelection`, `isFirstLoadBlocking`, `openPicker()`, `closePicker()`, `selectJustTalk()`, `selectSpace()`.
+- [x] Render breadcrumb header `Spaces > [Selected or "Just talk"]` in the main layout.
+- [x] Make the `Spaces` crumb a button with proper keyboard and ARIA labeling to open the modal.
+- [x] Ensure SSR/CSR alignment to avoid flicker: initial `isFirstLoadBlocking` computed before conversation init.
 
 ### Phase 2: Space Picker Modal component
-- [ ] Create `SpacePickerModal` with dialog semantics (role, aria-labelledby, focus trap, return-focus-on-close).
-- [ ] Oversized primary button at top: "Just talk".
-- [ ] Below, clickable rows for spaces (newest → oldest).
-- [ ] Truncate names beyond 200 chars with ellipsis; show full value on hover via `title`.
-- [ ] Row click selects the space and closes modal.
-- [ ] First load: non-dismissible (disable outside click/Escape; no close button).
-- [ ] In-conversation: allow dismiss via outside click and Escape.
+- [x] Create `SpacePickerModal` with dialog semantics (role, aria-labelledby, focus trap, return-focus-on-close).
+- [x] Oversized primary button at top: "Just talk".
+- [x] Below, clickable rows for spaces (newest → oldest).
+- [x] Truncate names beyond 200 chars with ellipsis; show full value on hover via `title`.
+- [x] Row click selects the space and closes modal.
+- [x] First load: non-dismissible (disable outside click/Escape; no close button).
+- [x] In-conversation: allow dismiss via outside click and Escape.
 
 ### Phase 3: Data fetching and sorting
-- [ ] Implement `useSpacesList()` (or extend existing client) to call `GET /api/spaces`.
-- [ ] Sort newest → oldest using a timestamp field (prefer `createdAt`, fallback `updatedAt` if needed).
-- [ ] Surface loading and error states visibly (fail fast and visibly per dev rules).
-- [ ] Empty list: only show the "Just talk" button.
+- [x] Implement `useSpacesList()` (or extend existing client) to call `GET /api/spaces`.
+- [x] Sort newest → oldest using a timestamp field (prefer `createdAt`, fallback `updatedAt` if needed).
+- [x] Surface loading and error states visibly (fail fast and visibly per dev rules).
+- [x] Empty list: only show the "Just talk" button.
 
 ### Phase 4: Conversation gating and priming
-- [ ] Block conversation/session initialization until `hasMadeInitialSelection === true`.
-- [ ] "Just talk": initialize conversation exactly as today with `selectedSpace = null`.
-- [ ] Selecting a space: set `selectedSpace = { id, name }` and pass into the existing initialization/priming path (e.g., supervisor input/context).
-- [ ] Guard consumers that assume initialized session (events, transcripts, file panel) until selection.
+- [x] Block conversation/session initialization until `hasMadeInitialSelection === true`.
+- [x] "Just talk": initialize conversation exactly as today with `selectedSpace = null`.
+- [x] Selecting a space: set `selectedSpace = { id, name }` and pass into the existing initialization/priming path (e.g., supervisor input/context).
+- [x] Guard consumers that assume initialized session (events, transcripts, file panel) until selection.
 
 ### Phase 5: Remove dropdown and finalize header
-- [ ] Remove existing spaces dropdown from UI (e.g., in `SpacesFilesPanel.tsx` or related).
-- [ ] Replace with header crumb + modal trigger.
-- [ ] Remove unused props/state and dead code.
+- [x] Remove existing spaces dropdown from UI (e.g., in `SpacesFilesPanel.tsx` or related).
+- [x] Replace with header crumb + modal trigger.
+- [x] Remove unused props/state and dead code.
 
 ### Phase 6: Styling, accessibility, and polish
-- [ ] Keyboard: Tab order, Enter/Space activation on rows/buttons, Escape (when allowed).
-- [ ] ARIA: labelled dialog, focus trap, announcement on open/close, restore focus to trigger.
-- [ ] Responsive layout; long lists scroll; maintain oversized CTA prominence.
-- [ ] Align visuals with current design tokens/components.
+- [x] Keyboard: Tab order, Enter/Space activation on rows/buttons, Escape (when allowed).
+- [x] ARIA: labelled dialog, focus trap, announcement on open/close, restore focus to trigger.
+- [x] Responsive layout; long lists scroll; maintain oversized CTA prominence.
+- [x] Align visuals with current design tokens/components.
 
 ### Phase 7: Testing
 - [ ] Unit tests: sorting newest → oldest; name truncation; gating state machine transitions.
@@ -110,14 +110,14 @@
 - No create-space in this UI (confirmed).
 
 ## Completion Criteria & Timeline
-- [ ] Header shows `Spaces > [space name]` or `Spaces > Just talk`.
-- [ ] Picker opens on first load, blocks until selection; non-dismissible on first load.
-- [ ] "Just talk" initializes current default conversation flow.
-- [ ] Selecting a space primes conversation with that space.
-- [ ] Spaces list is newest → oldest; empty state shows only "Just talk".
-- [ ] Old dropdown removed; no dead code left behind.
-- [ ] Accessibility verified (keyboard + ARIA semantics).
-- [ ] Unit, integration, and E2E tests added and passing.
-- [ ] Architecture/product docs updated as needed.
+- [x] Header shows `Spaces > [space name]` or `Spaces > Just talk`.
+- [x] Picker opens on first load, blocks until selection; non-dismissible on first load.
+- [x] "Just talk" initializes current default conversation flow.
+- [x] Selecting a space primes conversation with that space.
+- [x] Spaces list is newest → oldest; empty state shows only "Just talk".
+- [x] Old dropdown removed; no dead code left behind.
+- [x] Accessibility verified (keyboard + ARIA semantics).
+- [ ] Unit, integration, and E2E tests added and passing. (Deferred: team decision to skip tests for this change.)
+- [x] Architecture/product docs updated as needed.
 
 > See `specs/architecture/application-components.md` for UI context and `specs/work-plans/README.md` for process guidance.

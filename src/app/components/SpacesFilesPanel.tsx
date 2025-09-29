@@ -5,6 +5,7 @@ import SpacesFileTree from "./SpacesFileTree";
 import SpacesFileViewer from "./SpacesFileViewer";
 import { createBrowserSupabase } from "@/app/lib/supabase/client";
 import { FileSavedEvent } from "@/app/contexts/EventContext";
+import { useSpaceSelection } from "../contexts/SpaceSelectionContext";
 
 type SpacesFilesPanelProps = {
   children?: React.ReactNode;
@@ -12,37 +13,19 @@ type SpacesFilesPanelProps = {
 
 export default function SpacesFilesPanel({ children }: SpacesFilesPanelProps) {
   const supabase = React.useMemo(() => createBrowserSupabase(), []);
-  const [spaceName, setSpaceName] = React.useState<string | undefined>(undefined);
+  const { selectedSpaceName, openPicker } = useSpaceSelection();
+  const spaceName = selectedSpaceName || undefined;
   const [selectedPath, setSelectedPath] = React.useState<string | null>(null);
-  const [spaces, setSpaces] = React.useState<string[]>([]);
-  const [loadingSpaces, setLoadingSpaces] = React.useState<boolean>(false);
   const [toasts, setToasts] = React.useState<Array<{ id: number; text: string; action?: { label: string; onClick: () => void } }>>([]);
 
   React.useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function ensureAuth() {
       const { data } = await supabase.auth.getSession();
       if (cancelled) return;
-      if (!data.session) {
-        setSpaceName(undefined);
-        return;
-      }
-      try {
-        setLoadingSpaces(true);
-        const res = await fetch('/api/spaces');
-        if (res.ok) {
-          const json = await res.json();
-          const list = Array.isArray(json.spaces) ? json.spaces : [];
-          setSpaces(list);
-          // Prefer 'ideas' if present; otherwise first space.
-          const preferred = list.includes('ideas') ? 'ideas' : (list[0] || undefined);
-          setSpaceName((prev) => prev || preferred);
-        }
-      } finally {
-        setLoadingSpaces(false);
-      }
+      if (!data.session) return;
     }
-    load();
+    ensureAuth();
     return () => { cancelled = true; };
   }, [supabase]);
 
@@ -78,19 +61,10 @@ export default function SpacesFilesPanel({ children }: SpacesFilesPanelProps) {
   return (
     <div className="flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="px-6 py-3 border-b bg-white sticky top-0 z-10 flex items-center justify-start">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold">Spaces</span>
-          <select
-            className="text-sm border border-gray-300 rounded-md px-2 py-1 bg-white"
-            value={spaceName || ''}
-            onChange={(e) => { setSelectedPath(null); setSpaceName(e.target.value || undefined); }}
-            disabled={loadingSpaces || !spaces.length}
-          >
-            {!spaces.length && <option value="">No spaces</option>}
-            {spaces.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+        <div className="flex items-center gap-2 text-sm">
+          <button className="text-gray-900 font-semibold hover:underline" onClick={openPicker}>Spaces</button>
+          <span className="text-gray-400">&gt;</span>
+          <span className="truncate" title={spaceName || 'Just talk'}>{spaceName || 'Just talk'}</span>
         </div>
       </div>
       <div className="flex flex-col md:flex-row min-h-[240px] md:max-h-[40vh] md:h-[40vh]">
