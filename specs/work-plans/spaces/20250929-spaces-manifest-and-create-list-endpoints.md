@@ -1,5 +1,7 @@
 ## Executive Summary & Scope
 
+Status: Completed — 2025-09-29
+
 **Objective**: Introduce explicit Space creation and manifest metadata to enable recency sorting and future initialization data. Ensure agents can list Spaces and require selecting/creating a Space at conversation start.
 
 **Impact**: Faster, reliable Space discovery ordered by activity; groundwork for richer Space metadata (titles, tags) and bootstrap content. Improves agent UX by enforcing Space selection.

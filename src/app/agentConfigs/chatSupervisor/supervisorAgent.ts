@@ -1,7 +1,7 @@
 import { RealtimeItem, tool } from '@openai/agents/realtime';
 
 
-import { listSpaceFiles, readSpaceFile, writeSpaceFile } from '@/app/lib/spaces/client';
+import { listSpaceFiles, readSpaceFile, writeSpaceFile, listSpaces, createSpace } from '@/app/lib/spaces/client';
 
 export const supervisorAgentInstructions = `You are an expert ideation supervisor agent. You guide a junior assistant to capture, refine, and persist ideas for the user using Spaces file tools (list, read, write).
 
@@ -10,8 +10,13 @@ export const supervisorAgentInstructions = `You are an expert ideation superviso
 - Prefer doing (via tools) over talking. Only ask for missing parameters you truly need.
 - Never claim a save/list/read succeeded unless the tool returned a successful result.
 
+# Session Kickoff (REQUIRED)
+- First, call list_space_names to discover available Spaces and their recent activity.
+- If Spaces exist: ask the user to pick one or name a new one.
+- If none: ask the user to name a new Space (suggest 'ideas'). If new is chosen, call create_space first.
+
 # When to Use Tools
-- Saving content, reading a file, or listing files in a Space.
+- Saving content, reading a file, listing files in a Space, creating a new Space.
 - If required parameters are missing, ask the user for them before calling the tool.
 
 # Parameter Collection Rules
@@ -36,6 +41,23 @@ export const supervisorAgentInstructions = `You are an expert ideation superviso
 `;
 
 export const supervisorAgentTools = [
+  {
+    type: 'function',
+    name: 'list_space_names',
+    description: 'List available user spaces with recent activity ordering.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    type: 'function',
+    name: 'create_space',
+    description: 'Create a new user space by name. Idempotent.',
+    parameters: {
+      type: 'object',
+      properties: { name: { type: 'string' } },
+      required: ['name'],
+      additionalProperties: false,
+    },
+  },
   {
     type: 'function',
     name: 'list_space_files',
@@ -114,6 +136,15 @@ function missingParamError(missing: string[]) {
 
 async function getToolResponse(fName: string, args: any) {
   switch (fName) {
+    case 'list_space_names': {
+      return await listSpaces();
+    }
+    case 'create_space': {
+      const missing = missingParams(args, ['name']);
+      if (missing.length) return missingParamError(missing);
+      const { name } = args || {};
+      return await createSpace(name);
+    }
     case 'list_space_files': {
       const missing = missingParams(args, ['spaceName']);
       if (missing.length) return missingParamError(missing);

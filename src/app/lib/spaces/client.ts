@@ -20,6 +20,8 @@ type WriteFileResponse = {
 
 type ErrorEnvelope = { error: { code: string; message: string } };
 
+type ListSpacesResponse = { spaces: string[]; items?: { name: string; lastUpdatedAt?: string | null }[] };
+
 async function getAccessToken(): Promise<string | undefined> {
   try {
     const supabase = createBrowserSupabase();
@@ -94,6 +96,26 @@ export async function writeSpaceFile(
     try { return (await res.json()) as ErrorEnvelope; } catch { return { error: { code: "HTTP_ERROR", message: String(res.status) } }; }
   }
   return (await res.json()) as WriteFileResponse;
+}
+
+export async function listSpaces(): Promise<ListSpacesResponse | ErrorEnvelope> {
+  const res = await fetch('/api/spaces', { headers: await authHeaders() });
+  if (!res.ok) {
+    try { return (await res.json()) as ErrorEnvelope; } catch { return { error: { code: 'HTTP_ERROR', message: String(res.status) } }; }
+  }
+  return (await res.json()) as ListSpacesResponse;
+}
+
+export async function createSpace(name: string): Promise<{ created: boolean } | ErrorEnvelope> {
+  const res = await fetch('/api/spaces', {
+    method: 'POST',
+    headers: await authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    try { return (await res.json()) as ErrorEnvelope; } catch { return { error: { code: 'HTTP_ERROR', message: String(res.status) } }; }
+  }
+  return (await res.json()) as { created: boolean };
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {

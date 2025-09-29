@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/app/lib/supabase/server";
 import { getFile, putFile } from "@/app/lib/spaces/storage";
 import { resolveSpacePrefix, normalizeRelativePath } from "@/app/lib/spaces/paths";
+import { bumpManifestLastUpdated } from "@/app/lib/spaces/manifest";
 
 export async function GET(req: NextRequest, context: { params: Promise<{ name: string; path: string[] }> }) {
   try {
@@ -54,6 +55,8 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ name: s
     const objectKey = resolveSpacePrefix(user.id, name) + relPath;
     const arrayBuffer = await req.arrayBuffer();
     const result = await putFile(objectKey, arrayBuffer, contentType, { ifNoneMatch: ifNoneMatch === '*' ? '*' : undefined });
+    // Ensure manifest is updated before returning so serverless teardown doesn't cancel it
+    try { await bumpManifestLastUpdated(user.id, name); } catch {}
     const status = ifNoneMatch === '*' ? 201 : 200;
     return NextResponse.json({ path: relPath, size: result.size, contentType: result.contentType, etag: result.etag }, { status });
   } catch (err: any) {

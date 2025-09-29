@@ -78,13 +78,14 @@ export async function getFile(objectKey: string): Promise<{ bytes: ArrayBuffer; 
   return { bytes: arrayBuffer, contentType: undefined };
 }
 
-export async function putFile(objectKey: string, body: ArrayBuffer, contentType: string, opts?: PutOptions): Promise<WriteFileResponse> {
+export async function putFile(objectKey: string, body: ArrayBuffer | Uint8Array, contentType: string, opts?: PutOptions): Promise<WriteFileResponse> {
   if (!contentType) {
     const err = new Error("Missing Content-Type") as Error & { code?: string };
     err.code = "UNSUPPORTED_MEDIA_TYPE";
     throw err;
   }
-  if (body.byteLength > DEFAULT_MAX_BYTES) {
+  const payload = body instanceof Uint8Array ? body : new Uint8Array(body);
+  if (payload.byteLength > DEFAULT_MAX_BYTES) {
     const err = new Error("Request body too large") as Error & { code?: string };
     err.code = "REQUEST_TOO_LARGE";
     throw err;
@@ -102,9 +103,9 @@ export async function putFile(objectKey: string, body: ArrayBuffer, contentType:
     }
   }
 
-  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).upload(objectKey, body, { contentType, upsert: true });
+  const { data: uploadResult, error } = await supabase.storage.from(STORAGE_BUCKET).upload(objectKey, payload, { contentType, upsert: true });
   if (error) throw error;
-  return { path: objectKey, size: body.byteLength, contentType, etag: (data as any)?.etag };
+  return { path: objectKey, size: payload.byteLength, contentType, etag: (uploadResult as any)?.etag };
 }
 
 

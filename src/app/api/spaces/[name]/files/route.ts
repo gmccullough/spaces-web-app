@@ -3,6 +3,7 @@ import { createServerSupabase } from "@/app/lib/supabase/server";
 import { ListFilesResponse } from "@/app/lib/spaces/types";
 import { listFiles } from "@/app/lib/spaces/storage";
 import { resolveSpacePrefix, normalizeRelativePath } from "@/app/lib/spaces/paths";
+import { ensureManifest } from "@/app/lib/spaces/manifest";
 
 export async function GET(req: NextRequest, context: { params: Promise<{ name: string }> }) {
   try {
@@ -13,6 +14,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ name: s
     }
 
     const { name } = await context.params;
+    // Ensure a manifest exists for this space (idempotent)
+    try { await ensureManifest(user.id, name); } catch {}
     const url = new URL(req.url);
     const dirParam = url.searchParams.get("dir") || undefined;
     const recursiveParam = url.searchParams.get("recursive");

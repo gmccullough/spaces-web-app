@@ -14,6 +14,7 @@
 ### Database & Storage
 - **Primary Database**: Supabase Postgres (with RLS)
 - **Storage**: Supabase Storage (audio, exports)
+  - Spaces: per-user prefixes with `manifest.json` per space for metadata (created_at, last_updated_at)
 
 ### Jobs & Sub‑agents
 - **Queue**: Upstash QStash (HTTP queue)
@@ -130,6 +131,11 @@ All mutations—human or agent—flow through a single event envelope for proven
 - `GET  /api/graph` → canonical JSON graph (selectors for subgraphs)
 - `GET  /api/files` → generated Markdown list + content (with Mermaid blocks)
 - `POST /api/export` → enqueue GitHub commit job
+- `POST /api/spaces` → create Space (writes manifest.json, idempotent)
+- `GET  /api/spaces` → list Spaces with recency via manifest; sorted desc
+- `GET  /api/spaces/{name}/files` → list files within a Space
+- `GET  /api/spaces/{name}/files/{...path}` → read file
+- `PUT  /api/spaces/{name}/files/{...path}` → write file (bumps manifest.last_updated_at)
 - `POST /api/jobs/create` → create background job; worker handles `/jobs/run`
 
 ## Deployment Architecture

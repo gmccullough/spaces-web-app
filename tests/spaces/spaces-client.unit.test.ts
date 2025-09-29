@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { listSpaceFiles, readSpaceFile, writeSpaceFile } from '@/app/lib/spaces/client';
+import { listSpaceFiles, readSpaceFile, writeSpaceFile, listSpaces, createSpace } from '@/app/lib/spaces/client';
 
 // Mock Supabase client used by the browser wrapper
 vi.mock('@supabase/ssr', () => ({
@@ -46,6 +46,28 @@ describe('spaces client wrappers', () => {
     const res = await writeSpaceFile('ideas', 'ideas/poem.md', 'hello', 'text/markdown');
     if ('error' in (res as any)) throw new Error('unexpected error');
     expect(res.path).toBeDefined();
+  });
+
+  it('listSpaces includes bearer auth and parses response', async () => {
+    const payload = { spaces: ['ideas', 'notes'], items: [{ name: 'ideas', lastUpdatedAt: '2025-09-29T12:00:00Z' }] };
+    const fetchSpy = vi.spyOn(global, 'fetch' as any).mockResolvedValueOnce(new Response(JSON.stringify(payload), { status: 200 }));
+    const res = await listSpaces();
+    if ('error' in (res as any)) throw new Error('unexpected error');
+    expect(Array.isArray(res.spaces)).toBe(true);
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(String(url)).toBe('/api/spaces');
+    expect((init!.headers as any).Authorization).toBe('Bearer TEST_TOKEN');
+  });
+
+  it('createSpace posts name with bearer auth', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch' as any).mockResolvedValueOnce(new Response(JSON.stringify({ created: true }), { status: 201 }));
+    const res = await createSpace('ideas');
+    if ('error' in (res as any)) throw new Error('unexpected error');
+    expect(res.created).toBe(true);
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(String(url)).toBe('/api/spaces');
+    expect((init as any).method).toBe('POST');
+    expect((init!.headers as any).Authorization).toBe('Bearer TEST_TOKEN');
   });
 });
 
