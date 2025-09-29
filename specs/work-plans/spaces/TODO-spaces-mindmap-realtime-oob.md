@@ -41,26 +41,14 @@
 
 ## Implementation Plan
 
-### Phase 1: Foundations (Schema, Paths, Storage)
+### Phase 1: Foundations (Contracts, No Persistence)
 - [ ] **Define** **MindMap Diff Schema** - Minimal ID-less ops for realtime
   - **Files**: `src/app/lib/spaces/types.ts` (add types), `src/app/lib/spaces/paths.ts` (add mindmap path const)
   - **Dependencies**: None
   - **Validation**: Types compile; schema examples validate
   - **Context**: Aligns with OOB structured outputs; labels used as keys
 
-- [ ] **Add** **MindMap Snapshot Schema** - Persisted graph structure
-  - **Files**: `src/app/lib/spaces/types.ts`
-  - **Dependencies**: Diff schema
-  - **Validation**: Can serialize/deserialize snapshot; includes `schema_version: "1"`, `space_name`, `updated_at`, `nodes[]`, `edges[]`
-  - **Context**: Persist as single file per space
-
-- [ ] **Extend** **Spaces Paths & Storage** - Mind map file utilities
-  - **Files**: `src/app/lib/spaces/paths.ts`, `src/app/lib/spaces/storage.ts`
-  - **Dependencies**: Supabase client utils
-  - **Validation**: `getMindMapPath(spaceName)` returns `spaces/<space-name>/mindmap/mindmap.json`
-  - **Context**: Centralized pathing for consistency
-
-### Phase 2: Realtime OOB Integration
+### Phase 2A: Realtime OOB Backbone (Manual)
 - [ ] **Add** **OOB Channel Constants** - Channel + metadata keys
   - **Files**: `src/app/lib/spaces/types.ts` (constants)
   - **Dependencies**: Realtime session hook
@@ -97,11 +85,31 @@
   - **Validation**: Non-conforming payloads rejected with visible dev log; optional one retry before surfacing error
   - **Context**: Reliability for renderer
 
+- [ ] **Add** **Manual Analyze Control** - Trigger OOB on demand
+  - **Files**: `src/app/components/Toolbar.tsx` (or similar), `src/app/hooks/useRealtimeSession.ts`
+  - **Dependencies**: OOB backbone above
+  - **Validation**: Clicking "Analyze now" issues OOB `response.create`; Inspector receives and displays results; no state mutation yet
+  - **Context**: Simplifies early manual testing and debugging
+
+- [ ] **Create** **MindMapInspector** - Context/Diff/JSON + Activity feed
+  - **Files**: `src/app/components/MindMapInspector.tsx` (new)
+  - **Dependencies**: Mind map OOB correlation state
+  - **Validation**: Tabs: Context (exact payload used incl. message IDs), Diff (human-readable ops list), JSON (raw payload with `response.id`); Activity feed keyed by `response.id`
+  - **Context**: Provides observability and auditability of OOB updates
+
+### Phase 2B: OOB Diff Application & Auto-Trigger
+
 - [ ] **Implement** **OOB Event Filter & Reducer** - Apply diffs in-memory
   - **Files**: `src/app/hooks/useRealtimeSession.ts`, `src/app/hooks/useSpacesMindMap.ts` (new)
   - **Dependencies**: Diff schema; space context
-  - **Validation**: Only events where `metadata.channel === "spaces-mindmap"` and `metadata.spaceName === currentSpaceName` are reduced; maintain `appliedResponseIndex` to avoid reordering
+  - **Validation**: Only events where `metadata.channel === "spaces-mindmap"` and `metadata.spaceName === currentSpaceName` are reduced; apply atomically at terminal completion; maintain `appliedResponseIndex` to avoid reordering
   - **Context**: Maintains ID-less graph; determines existing vs new concept by label match
+
+- [ ] **Enable** **Auto OOB Trigger After Each Turn** - Background updates
+  - **Files**: `src/app/hooks/useRealtimeSession.ts`
+  - **Dependencies**: Debounce, single in-flight, gating
+  - **Validation**: After user or assistant turn, an OOB request is scheduled (debounced). Manual control remains available
+  - **Context**: Moves from manual to continuous OOB updates safely
 
 ### Phase 3: Viewer & File Explorer Integration
 - [ ] **Create** **MindMapViewer** - Zoom-only mind map renderer
@@ -115,14 +123,21 @@
   - **Dependencies**: Viewer component; routing to right-side preview
   - **Validation**: Clicking "Mind Map" shows viewer in preview pane for the active space
   - **Context**: Mirrors file opening UX, but data comes from in-memory + snapshot
+  
 
-- [ ] **Create** **MindMapInspector** - Context/Diff/JSON + Activity feed
-  - **Files**: `src/app/components/MindMapInspector.tsx` (new)
-  - **Dependencies**: Mind map state hook; OOB correlation state
-  - **Validation**: Tabs: Context (exact payload used incl. message IDs), Diff (human-readable ops list), JSON (raw payload with `response.id`); Activity feed keyed by `response.id`
-  - **Context**: Provides observability and auditability of OOB updates
+### Phase 4: Persistence, Save Flow & Cadence
 
-### Phase 4: Save Flow & Cadence
+- [ ] **Add** **MindMap Snapshot Schema** - Persisted graph structure
+  - **Files**: `src/app/lib/spaces/types.ts`
+  - **Dependencies**: Diff schema
+  - **Validation**: Can serialize/deserialize snapshot; includes `schema_version: "1"`, `space_name`, `updated_at`, `nodes[]`, `edges[]`
+  - **Context**: Persist as single file per space
+
+- [ ] **Extend** **Spaces Paths & Storage** - Mind map file utilities
+  - **Files**: `src/app/lib/spaces/paths.ts`, `src/app/lib/spaces/storage.ts`
+  - **Dependencies**: Supabase client utils
+  - **Validation**: `getMindMapPath(spaceName)` returns `spaces/<space-name>/mindmap/mindmap.json`
+  - **Context**: Centralized pathing for consistency
 - [ ] **Track** **Diff Count & Prompt** - Ask after 5 diffs
   - **Files**: `src/app/hooks/useSpacesMindMap.ts` (diff counter), `src/app/hooks/useRealtimeSession.ts` (agent ask)
   - **Dependencies**: OOB/assistant messaging patterns
@@ -134,6 +149,12 @@
   - **Dependencies**: Supabase storage (If-Match/ETag), current snapshot load
   - **Validation**: Assign stable IDs, write `mindmap.json`, refresh in-memory from saved snapshot
   - **Context**: Single authoritative snapshot; create file if missing by default
+
+- [ ] **Load** **Snapshot at Space Open** - Initialize state and OOB context
+  - **Files**: `src/app/hooks/useSpacesMindMap.ts`, `src/app/lib/spaces/storage.ts`
+  - **Dependencies**: Path/storage helpers
+  - **Validation**: On space activation, load `mindmap.json` if present and hydrate state; include distilled snapshot in subsequent OOB context
+  - **Context**: Enables continuity across sessions
 
 ### Phase 5: Stabilization & Edge Cases
 - [ ] **Handle** **Label Collisions** - Update vs. new label policy
