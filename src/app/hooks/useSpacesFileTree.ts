@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { FileSavedEvent } from "@/app/contexts/EventContext";
 import { listSpaceFiles } from "@/app/lib/spaces/client";
 
 export type TreeNode = {
@@ -50,11 +51,14 @@ export function useSpacesFileTree(spaceName: string | undefined) {
     return () => { cancelled = true; };
   }, []);
 
-  const ensureDir = React.useCallback(async (dir: string) => {
+  // NOTE: event listener effect is placed after ensureDir definition to avoid TDZ
+
+  const ensureDir = React.useCallback(async (dir: string, force?: boolean) => {
     if (!isReady) return;
     const key = dir || "";
     const current = dirStates[key];
-    if (current?.nodes || current?.loading) return;
+    if (current?.loading) return;
+    if (!force && current?.nodes) return;
     setDirStates((s) => ({ ...s, [key]: { loading: true } }));
     const res = await listSpaceFiles(spaceName!, { dir, recursive: false });
     if ((res as any).error) {
@@ -87,6 +91,31 @@ export function useSpacesFileTree(spaceName: string | undefined) {
 
   const getDirState = React.useCallback((dir: string) => dirStates[dir || ""] || { loading: false }, [dirStates]);
 
+  // Listen for fileSaved to refresh affected directories (debounced)
+  React.useEffect(() => {
+    if (!spaceName) return;
+    let debounceTimer: any;
+    const handler = (ev: Event) => {
+      const ce = ev as CustomEvent<FileSavedEvent>;
+      const e = ce?.detail;
+      if (!e || e.spaceName !== spaceName) return;
+      // Refresh root and parent directory if known
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        try {
+          await ensureDir("", true);
+          const parent = getParentDir(e.path);
+          if (parent !== null) await ensureDir(parent, true);
+        } catch {}
+      }, 150);
+    };
+    window.addEventListener('spaces:fileSaved', handler as EventListener);
+    return () => {
+      window.removeEventListener('spaces:fileSaved', handler as EventListener);
+      clearTimeout(debounceTimer);
+    };
+  }, [spaceName, ensureDir]);
+
   return {
     isReady,
     spaces,
@@ -101,6 +130,12 @@ export function useSpacesFileTree(spaceName: string | undefined) {
 
 function normalizeDirPath(p: string): string {
   return p.endsWith('/') ? p.slice(0, -1) : p;
+}
+
+function getParentDir(p: string | null): string | null {
+  if (!p) return null;
+  const i = p.lastIndexOf('/');
+  return i >= 0 ? p.substring(0, i) : "";
 }
 
 

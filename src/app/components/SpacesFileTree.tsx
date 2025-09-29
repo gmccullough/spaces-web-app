@@ -150,7 +150,7 @@ function TreeDir({ dir, getDirState, ensureDir, expandedDirs, toggleExpand, sele
         const isOpen = expandedDirs.has(key);
         return (
           <li key={key}>
-            <div role="treeitem" aria-expanded={isOpen} aria-selected={false} className="px-2 py-1 rounded cursor-pointer hover:bg-gray-50" onClick={() => toggleExpand(key)}>
+            <div role="treeitem" aria-expanded={isOpen} aria-selected={false} className={`px-2 py-1 rounded cursor-pointer ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`} onClick={() => toggleExpand(key)}>
               <span className="mr-1">{isOpen ? '📂' : '📁'}</span>
               {d.name}
             </div>
@@ -160,7 +160,7 @@ function TreeDir({ dir, getDirState, ensureDir, expandedDirs, toggleExpand, sele
       })}
       {files.map((f: any) => (
         <li key={f.path}>
-          <div role="treeitem" aria-selected={selectedPath === f.path} className={`px-2 py-1 rounded cursor-pointer ${selectedPath === f.path ? 'bg-gray-100' : ''}`} onClick={() => { setSelectedPath(f.path); onSelectPath?.(f.path); }}>
+          <div role="treeitem" aria-selected={selectedPath === f.path} className={`px-2 py-1 rounded cursor-pointer ${selectedPath === f.path ? 'bg-blue-50' : ''}`} onClick={() => { setSelectedPath(f.path); onSelectPath?.(f.path); }}>
             <span className="mr-1">📄</span>
             {f.name}
           </div>

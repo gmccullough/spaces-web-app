@@ -79,8 +79,15 @@ export async function writeSpaceFile(
   contentType: string,
   opts?: { ifNoneMatch?: '*' }
 ): Promise<WriteFileResponse | ErrorEnvelope> {
-  const cleanPath = stripSpacePrefix(spaceName, normalizePath(path));
-  const url = `/api/spaces/${encodeURIComponent(spaceName)}/files/${cleanPath.split("/").map(encodeURIComponent).join("/")}`;
+  const normalized = normalizePath(path);
+  const stripped = stripSpacePrefix(spaceName, normalized);
+  // Avoid nested other-space prefixes: if first segment looks like a space name different from the selected one, drop it
+  const first = (stripped.split('/')?.[0] || '').trim();
+  let finalPath = stripped;
+  if (first && first !== spaceName && /^[a-z0-9\-]+$/.test(first)) {
+    finalPath = stripped.substring(first.length + 1);
+  }
+  const url = `/api/spaces/${encodeURIComponent(spaceName)}/files/${finalPath.split("/").map(encodeURIComponent).join("/")}`;
   const headers: HeadersInit = await authHeaders({ "Content-Type": contentType });
   if (opts?.ifNoneMatch === '*') {
     (headers as any)["If-None-Match"] = '*';
@@ -95,7 +102,14 @@ export async function writeSpaceFile(
   if (!res.ok) {
     try { return (await res.json()) as ErrorEnvelope; } catch { return { error: { code: "HTTP_ERROR", message: String(res.status) } }; }
   }
-  return (await res.json()) as WriteFileResponse;
+  const json = (await res.json()) as WriteFileResponse;
+  try {
+    if (typeof window !== 'undefined') {
+      const detail = { spaceName, path: finalPath, etag: json.etag, size: json.size } as any;
+      window.dispatchEvent(new CustomEvent('spaces:fileSaved', { detail }));
+    }
+  } catch {}
+  return json;
 }
 
 export async function listSpaces(): Promise<ListSpacesResponse | ErrorEnvelope> {

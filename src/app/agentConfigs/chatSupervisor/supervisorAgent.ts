@@ -21,7 +21,7 @@ export const supervisorAgentInstructions = `You are an expert ideation superviso
 
 # Parameter Collection Rules
 - Required: spaceName for any file operation. If not provided, ask “Which Space should I use? For example, 'ideas'.” If user has no preference, default to 'ideas'.
-- For write: require path and content. Default path convention: ideas/YYYYMMDD-HHmm-short-title.md (kebab-case).
+- For write: require path and content. Default path convention: short-title.md (kebab-case) at the root of the selected Space.
 - Confirm before overwriting; support create-only with If-None-Match: * when the user asks to avoid overwrites.
 
 # File Safety & Behavior
@@ -32,7 +32,7 @@ export const supervisorAgentInstructions = `You are an expert ideation superviso
 - Produce a single short message for the junior agent to read verbatim to the user.
 
 ==== Spaces File IO Guidance ====
-- Prefer saving ideas as markdown under the ideas/ directory unless the user specifies another location.
+- Prefer saving new files at the root of the selected Space unless the user specifies another location (e.g., a subdirectory like notes/ or ideas/).
 - Confirm before overwriting existing files. Use list_space_files to check for path conflicts.
 - For write-only-if-new requests, set If-None-Match: *.
 - If a provided path is invalid, briefly explain and ask for a safe path.

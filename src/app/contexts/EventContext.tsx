@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, FC, PropsWithChildren } from "react";
+import React, { createContext, useContext, useEffect, useState, FC, PropsWithChildren } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { LoggedEvent } from "@/app/types";
 
@@ -10,9 +10,19 @@ type EventContextValue = {
   logServerEvent: (eventObj: Record<string, any>, eventNameSuffix?: string) => void;
   logHistoryItem: (item: any) => void;
   toggleExpand: (id: number | string) => void;
+  emitFileSaved: (e: FileSavedEvent) => void;
+  onFileSaved: (handler: (e: FileSavedEvent) => void) => () => void;
 };
 
 const EventContext = createContext<EventContextValue | undefined>(undefined);
+
+export type FileSavedEvent = {
+  spaceName: string;
+  path: string;
+  etag?: string;
+  size?: number;
+  updatedAt?: string;
+};
 
 export const EventProvider: FC<PropsWithChildren> = ({ children }) => {
   const [loggedEvents, setLoggedEvents] = useState<LoggedEvent[]>([]);
@@ -64,10 +74,35 @@ export const EventProvider: FC<PropsWithChildren> = ({ children }) => {
     );
   };
 
+  const emitFileSaved: EventContextValue['emitFileSaved'] = (e) => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent<FileSavedEvent>('spaces:fileSaved', { detail: e }));
+      }
+      // Also log for dev visibility
+      logClientEvent({ type: 'fileSaved', ...e }, 'emit');
+    } catch {}
+  };
+
+  const onFileSaved: EventContextValue['onFileSaved'] = (handler) => {
+    const listener = (ev: Event) => {
+      const ce = ev as CustomEvent<FileSavedEvent>;
+      if (ce?.detail) handler(ce.detail);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('spaces:fileSaved', listener as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('spaces:fileSaved', listener as EventListener);
+      }
+    };
+  };
+
 
   return (
     <EventContext.Provider
-      value={{ loggedEvents, logClientEvent, logServerEvent, logHistoryItem, toggleExpand }}
+      value={{ loggedEvents, logClientEvent, logServerEvent, logHistoryItem, toggleExpand, emitFileSaved, onFileSaved }}
     >
       {children}
     </EventContext.Provider>
