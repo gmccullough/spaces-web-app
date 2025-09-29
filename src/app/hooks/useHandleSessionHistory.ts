@@ -111,7 +111,7 @@ export function useHandleSessionHistory() {
   }
 
   function handleHistoryUpdated(items: any[]) {
-    console.log("[handleHistoryUpdated] ", items);
+    // console.log("[handleHistoryUpdated] ", items);
     items.forEach((item: any) => {
       if (!item || item.type !== 'message') return;
 

@@ -129,7 +129,13 @@ export async function createSpace(name: string): Promise<{ created: boolean } | 
   if (!res.ok) {
     try { return (await res.json()) as ErrorEnvelope; } catch { return { error: { code: 'HTTP_ERROR', message: String(res.status) } }; }
   }
-  return (await res.json()) as { created: boolean };
+  const json = (await res.json()) as { created: boolean };
+  try {
+    if (typeof window !== 'undefined' && json && (json.created === true || json.created === false)) {
+      window.dispatchEvent(new CustomEvent('spaces:spaceCreated', { detail: { name } }));
+    }
+  } catch {}
+  return json;
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {

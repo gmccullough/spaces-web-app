@@ -77,8 +77,8 @@ function Toolbar({
       {/* Top row: logo on left, default controls on right */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center cursor-pointer" onClick={onLogoClick}>
-          <Image src="/spaces-logo.png" alt="Spaces Logo" width={24} height={24} className="mr-2" />
-          <div>Spaces</div>
+          <Image src="/spaces-logo.png" alt="Spaces Logo" width={48} height={48} className="mr-2" />
+          <div className="uppercase font-medium">Spaces</div>
         </div>
         <div className="flex items-center justify-end gap-3 flex-wrap">
           <button onClick={onToggleConnection} className={getConnectionButtonClasses()} disabled={isConnecting}>

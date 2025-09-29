@@ -40,6 +40,28 @@ export function SpaceSelectionProvider({ children }: { children: React.ReactNode
     setIsPickerOpen(false);
   }, []);
 
+  // Auto-select a newly created space if emitted by client utils
+  React.useEffect(() => {
+    const onCreated = (ev: Event) => {
+      try {
+        const ce = ev as CustomEvent<{ name: string }>;
+        const nm = (ce?.detail?.name || "").slice(0, 200);
+        if (!nm) return;
+        if (!hasMadeInitialSelection || isPickerOpen) {
+          selectSpace(nm);
+        }
+      } catch {}
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('spaces:spaceCreated', onCreated as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('spaces:spaceCreated', onCreated as EventListener);
+      }
+    };
+  }, [hasMadeInitialSelection, isPickerOpen, selectSpace]);
+
   const value: SpaceSelectionContextValue = React.useMemo(
     () => ({
       selectedSpaceName,
