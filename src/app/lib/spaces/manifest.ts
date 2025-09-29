@@ -34,14 +34,14 @@ export async function readManifest(userId: string, spaceName: string): Promise<S
 export async function writeManifest(userId: string, spaceName: string, manifest: SpaceManifestV1): Promise<void> {
   const key = getManifestKey(userId, spaceName);
   const json = JSON.stringify(manifest);
-  const bytes = new TextEncoder().encode(json).buffer;
+  const bytes = new TextEncoder().encode(json);
   try {
     await putFile(key, bytes, 'application/json');
   } catch (e: any) {
     // Fallback: prime the space prefix with a zero-byte sentinel, then retry once
     try {
       const sentinelKey = resolveSpacePrefix(userId, spaceName) + '.keep';
-      const empty = new Uint8Array(0).buffer;
+      const empty = new Uint8Array(0);
       await putFile(sentinelKey, empty, 'application/octet-stream');
       await putFile(key, bytes, 'application/json');
     } catch (inner: any) {
