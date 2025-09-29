@@ -20,10 +20,21 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * Remove private, underscore-prefixed fields before sending payload to OpenAI.
+ * Keeps original `body` intact for server-side logging.
+ */
+function sanitizeBodyForOpenAI<T extends Record<string, any>>(input: T): T {
+  if (!input || typeof input !== 'object') return input;
+  const sanitizedEntries = Object.entries(input).filter(([key]) => !key.startsWith('_'));
+  return Object.fromEntries(sanitizedEntries) as T;
+}
+
 async function structuredResponse(openai: OpenAI, body: any) {
   try {
+    const openaiBody = sanitizeBodyForOpenAI(body);
     const response = await openai.responses.parse({
-      ...(body as any),
+      ...(openaiBody as any),
       stream: false,
     });
 
@@ -74,8 +85,9 @@ async function structuredResponse(openai: OpenAI, body: any) {
 
 async function textResponse(openai: OpenAI, body: any) {
   try {
+    const openaiBody = sanitizeBodyForOpenAI(body);
     const response = await openai.responses.create({
-      ...(body as any),
+      ...(openaiBody as any),
       stream: false,
     });
 
