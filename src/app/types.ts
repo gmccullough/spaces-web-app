@@ -146,3 +146,11 @@ export const GuardrailOutputZod = z.object({
 });
 
 export type GuardrailOutput = z.infer<typeof GuardrailOutputZod>;
+
+// Schema used for API-validated structured output (no optional fields allowed)
+export const GuardrailOutputAPIZod = z.object({
+  moderationRationale: z.string(),
+  moderationCategory: ModerationCategoryZod,
+});
+
+export type GuardrailOutputAPI = z.infer<typeof GuardrailOutputAPIZod>;

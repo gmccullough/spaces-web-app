@@ -1,5 +1,5 @@
 import { zodTextFormat } from 'openai/helpers/zod';
-import { GuardrailOutputZod, GuardrailOutput } from '@/app/types';
+import { GuardrailOutputZod, GuardrailOutput, GuardrailOutputAPIZod, GuardrailOutputAPI } from '@/app/types';
 
 // Validator that calls the /api/responses endpoint to
 // validates the realtime output according to moderation policies. 
@@ -41,7 +41,8 @@ export async function runGuardrailClassifier(
       model: 'gpt-4o-mini',
       input: messages,
       text: {
-        format: zodTextFormat(GuardrailOutputZod, 'output_format'),
+        // API requires all fields required: use APIZod variant without optional fields
+        format: zodTextFormat(GuardrailOutputAPIZod, 'output_format'),
       },
     }),
   });
@@ -54,7 +55,9 @@ export async function runGuardrailClassifier(
   const data = await response.json();
 
   try {
-    const output = GuardrailOutputZod.parse(data.output_parsed);
+    // Validate strictly against API schema, then enrich to full internal shape
+    const outputApi = GuardrailOutputAPIZod.parse(data.output_parsed) as GuardrailOutputAPI;
+    const output = GuardrailOutputZod.parse({ ...outputApi, testText: message });
     return {
       ...output,
       testText: message,
