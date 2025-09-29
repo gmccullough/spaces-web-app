@@ -3,16 +3,21 @@
 
 **Impact**: Enables live visualization of key ideas and their relationships during conversations, improving comprehension and navigation without interrupting primary chat.
 
-**Approach**: Trigger an OOB `response.create` after each turn with full conversation context plus prior `mindmap.json` snapshot. The model returns a minimal JSON diff (nodes/edges add/update/remove). The client applies diffs to an in-memory graph (ID-less until persisted). Every 5 diffs, the agent asks to save; on confirmation, persist a single `mindmap.json` snapshot to Supabase.
+**Approach**: Trigger an OOB `response.create` with `conversation: "none"` after each turn, using a bounded transcript window plus an optional rolling summary, along with the prior `mindmap.json` snapshot. Enforce `response_format: { type: "json_schema", schema: MindMapDiffSchema, schema_name: "mindmap_diff_v1" }`. Apply diffs only upon terminal response completion (track `response.id` and gate on completion); maintain exactly one in-flight OOB per space with debounce and cancellation. The client applies validated diffs atomically to an in-memory graph (ID-less until persisted). Every 5 diffs, the agent asks to save; on confirmation, persist a single `mindmap.json` snapshot to Supabase.
 
 ## Scope & Constraints
 ### In Scope
-- [ ] Realtime OOB analysis after every turn, full conversation context (for now)
+- [ ] Realtime OOB analysis after every turn using `response.create` with `conversation: "none"`
+- [ ] Strict structured output via `response_format: { type: "json_schema", schema_name: "mindmap_diff_v1" }`
+- [ ] Bounded transcript window + optional rolling summary as OOB context (not full conversation)
+- [ ] Single in-flight OOB per space with debounce (≈500–800ms) and cancellation/supersede
+- [ ] Terminal-event gating: apply diffs only after response completion, correlated via `response.id`
 - [ ] OOB channel naming and filtering by current space
 - [ ] Diff JSON schema (no IDs while unpersisted; labels as keys)
 - [ ] Single-file persistence: `spaces/<space-name>/mindmap/mindmap.json`
 - [ ] Load prior `mindmap.json` at conversation start as context and local state
 - [ ] Viewer: mind map graph in right-side preview; zoom only (no edits)
+- [ ] Inspector UI: Context/Diff/JSON tabs and Activity feed keyed by `response.id`
 - [ ] File explorer: special virtual link "Mind Map" for the current space
 - [ ] Save flow: "save these ideas" command and periodic prompt after 5 diffs
 - [ ] ID assignment on save; stable IDs stored only in snapshot
@@ -23,8 +28,11 @@
 - [ ] Undo; separate node/edge files; delta logs (may add later)
 
 ### Success Criteria
-- [ ] After each turn, client receives OOB event on the mind map channel with valid JSON diff that passes schema validation
-- [ ] Viewer updates visually from diffs without page reload; no blocking of main assistant reply
+- [ ] After each turn, an OOB `response.create` is issued with `conversation: "none"` and `response_format: json_schema (mindmap_diff_v1)`
+- [ ] Diffs are applied only after the terminal completion event for that `response.id`; partial chunks are buffered/ignored
+- [ ] Single in-flight OOB per space is enforced with debounce; older in-flight OOB is cancelled/superseded on new turn
+- [ ] The Inspector shows the exact context payload (bounded window + optional summary), the human-readable diff, and raw JSON with `response.id`
+- [ ] Viewer updates from applied diffs without blocking the main assistant reply or requiring reload
 - [ ] On prompt after 5 diffs or user command, snapshot is persisted to `mindmap.json` with stable IDs and updated timestamp
 - [ ] On new conversation in same space, prior `mindmap.json` loads and informs OOB concept-matching
 - [ ] Channel filtering ensures only events for the active space are applied
@@ -59,22 +67,40 @@
   - **Validation**: Constants used across hook and UI
   - **Context**: `channel: "spaces-mindmap"`, metadata includes `spaceName`
 
-- [ ] **Trigger** **OOB Requests After Each Turn** - Full context + prior snapshot
+- [ ] **Configure** **OOB response.create** - `conversation: "none"` + schema
+  - **Files**: `src/app/hooks/useRealtimeSession.ts`
+  - **Dependencies**: Diff schema definition
+  - **Validation**: `response.create` sets `conversation: "none"` and `response_format: { type: "json_schema", schema_name: "mindmap_diff_v1" }`
+  - **Context**: Keeps OOB updates out of default conversation state
+
+- [ ] **Assemble** **Bounded Context** - Window + optional summary + snapshot
   - **Files**: `src/app/hooks/useRealtimeSession.ts`
   - **Dependencies**: Transcript/session APIs
-  - **Validation**: OOB `response.create` fires after both user and assistant turns; includes `metadata.channel`, `metadata.spaceName`
-  - **Context**: Does not interfere with primary assistant response
+  - **Validation**: Uses last N turns (configurable) plus rolling summary and prior snapshot content in instructions
+  - **Context**: Predictable token control; avoids full-conversation bloat
+
+- [ ] **Debounce & Single In-Flight** - Cancellation/supersede policy
+  - **Files**: `src/app/hooks/useRealtimeSession.ts`
+  - **Dependencies**: Realtime client
+  - **Validation**: At most one OOB per space in flight; new turns cancel/supersede prior; debounce ≈500–800ms
+  - **Context**: Prevents thrash; ensures latest context wins
+
+- [ ] **Gate on Terminal Event** - Apply atomically on completion
+  - **Files**: `src/app/hooks/useRealtimeSession.ts`, `src/app/hooks/useSpacesMindMap.ts` (new)
+  - **Dependencies**: Realtime events API
+  - **Validation**: Track `response.id`; buffer partials; apply once `response.completed` (or equivalent) is observed
+  - **Context**: Deterministic, atomic diff application
 
 - [ ] **Enforce** **Structured Outputs** - JSON schema contract
   - **Files**: `src/app/hooks/useRealtimeSession.ts`
   - **Dependencies**: Diff schema definition
-  - **Validation**: Non-conforming payloads ignored with visible dev log
+  - **Validation**: Non-conforming payloads rejected with visible dev log; optional one retry before surfacing error
   - **Context**: Reliability for renderer
 
 - [ ] **Implement** **OOB Event Filter & Reducer** - Apply diffs in-memory
   - **Files**: `src/app/hooks/useRealtimeSession.ts`, `src/app/hooks/useSpacesMindMap.ts` (new)
   - **Dependencies**: Diff schema; space context
-  - **Validation**: Only events where `metadata.channel === "spaces-mindmap"` and `metadata.spaceName === currentSpaceName` are reduced
+  - **Validation**: Only events where `metadata.channel === "spaces-mindmap"` and `metadata.spaceName === currentSpaceName` are reduced; maintain `appliedResponseIndex` to avoid reordering
   - **Context**: Maintains ID-less graph; determines existing vs new concept by label match
 
 ### Phase 3: Viewer & File Explorer Integration
@@ -89,6 +115,12 @@
   - **Dependencies**: Viewer component; routing to right-side preview
   - **Validation**: Clicking "Mind Map" shows viewer in preview pane for the active space
   - **Context**: Mirrors file opening UX, but data comes from in-memory + snapshot
+
+- [ ] **Create** **MindMapInspector** - Context/Diff/JSON + Activity feed
+  - **Files**: `src/app/components/MindMapInspector.tsx` (new)
+  - **Dependencies**: Mind map state hook; OOB correlation state
+  - **Validation**: Tabs: Context (exact payload used incl. message IDs), Diff (human-readable ops list), JSON (raw payload with `response.id`); Activity feed keyed by `response.id`
+  - **Context**: Provides observability and auditability of OOB updates
 
 ### Phase 4: Save Flow & Cadence
 - [ ] **Track** **Diff Count & Prompt** - Ask after 5 diffs
@@ -152,8 +184,9 @@
 - **Channel**: `spaces-mindmap`
 - **Metadata**: `{ spaceName: "<current-space-name>" }`
 - **Filtering**: Client reduces events only when `metadata.channel === "spaces-mindmap"` and `metadata.spaceName === currentSpaceName`
-- **Trigger**: After every user and assistant turn
-- **Context fed to model**: Full conversation (for now) + distilled or full `mindmap.json`
+- **Creation**: `response.create` with `conversation: "none"` and `response_format: { type: "json_schema", schema_name: "mindmap_diff_v1" }`
+- **Lifecycle**: Track `response.id`; buffer partials; apply only on terminal completion; maintain single in-flight per space; debounce new requests
+- **Context fed to model**: Bounded window of last N turns + optional rolling summary + distilled prior `mindmap.json`
 
 ### Service/Hook Interfaces (signatures)
 ```ts
@@ -168,6 +201,10 @@ function saveMindMapSnapshot(spaceName: string, state: MindMapState): Promise<Mi
 
 // Viewer state
 function useSpacesMindMap(spaceName: string): { state: MindMapState; applyDiff: (d: MindMapDiff) => void; diffCount: number; resetDiffCount: () => void }
+
+// OOB control & observability
+function cancelMindMapOOBAnalysis(spaceName: string): void
+function useMindMapOOBInspector(spaceName: string): { latestResponseId?: string; activity: OOBActivityItem[]; lastContextPayload: string; lastJsonPayload?: string }
 ```
 
 ### Storage Layout (Supabase Storage)
@@ -178,6 +215,7 @@ function useSpacesMindMap(spaceName: string): { state: MindMapState; applyDiff: 
 - Special virtual file entry "Mind Map" in explorer for the active space
 - Right-side preview renders `MindMapViewer` (zoom only)
 - Rendering library: `react-force-graph` (2D) or `graphology + sigma` (choose one; initial: `react-force-graph`)
+- Inspector panel accessible from the mind map view, with Context/Diff/JSON tabs and an Activity feed keyed by `response.id`
 
 ---
 
@@ -190,6 +228,10 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
 ### New Tests (lightweight, optional in dev)
 - [ ] **Unit**: Path helper for mind map file returns correct path
 - [ ] **Unit**: Diff reducer applies `add_node`, `update_node`, `add_edge`, `remove_edge` as expected
+- [ ] **Unit**: Schema enforcement rejects non-conforming OOB payloads
+- [ ] **Unit**: Terminal-event gating applies diffs only after completion and in order
+- [ ] **Unit**: Single in-flight + debounce behavior cancels/supersedes correctly
+- [ ] **Unit**: Bounded context assembler selects last N turns + summary deterministically
 - [ ] **Integration**: Load-then-save snapshot roundtrip preserves data shape
 
 ### Test Documentation Updates
@@ -203,6 +245,8 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
 - **Schema conformance**: Non-JSON outputs from OOB → Mitigate with strict response_format and client validation
 - **Label collisions**: Multiple concepts share label → Treat as update or suffix label client-side
 - **Race conditions**: Concurrent saves → Use ETags and retry fetch-merge-save
+ - **Out-of-order/partial events**: Streaming may emit partials → Gate application on terminal completion; buffer or discard partials
+ - **Context bloat**: Using too many turns increases latency/cost → Enforce bounded window + summary
 
 ### Dependencies
 - Realtime session events and transcript hooks
@@ -214,7 +258,9 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
 ## Discussion & Decision Context
 - Lightweight realtime hints, per space, one large mind map entity
 - Load `mindmap.json` as prior context at conversation start
-- OOB returns diffs; trigger after every turn; full conversation context (for now)
+- OOB returns diffs; trigger after every turn; use bounded transcript window + optional rolling summary (not full conversation)
+- OOB responses are created with `conversation: "none"` and strict `response_format: json_schema` to avoid contaminating the default thread
+- Single in-flight OOB per space with debounce; older requests are cancelled/superseded
 - Agent determines existing concept vs new (label-based), chooses when to create new label
 - Salience is 1–10, relative to existing items in the graph
 - Save cadence: prompt after 5 diffs; on "save these ideas" persist full snapshot
@@ -230,10 +276,12 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
 - [ ] Types, paths, and storage helpers implemented
 
 ### Phase 2 (Day 2)
-- [ ] OOB trigger, schema wiring, event filtering, and reducer
+- [ ] OOB trigger configured (`conversation: "none"`), bounded context assembly, schema wiring
+- [ ] Debounce + single in-flight with cancellation; terminal-event gating; response correlation
 
 ### Phase 3 (Day 3)
 - [ ] Viewer and file explorer integration
+- [ ] Inspector UI (Context/Diff/JSON tabs + Activity feed)
 
 ### Phase 4 (Day 4)
 - [ ] Save flow (ask after 5 diffs, consolidate, persist, reload)
@@ -242,8 +290,9 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
 - [ ] Stabilization: collisions, salience visuals, optimistic concurrency
 
 ### Final Completion Criteria
-- [ ] OOB diffs apply live without disrupting main chat
+- [ ] OOB diffs apply live without disrupting main chat; created with `conversation: "none"` and `response_format: json_schema`
 - [ ] Mind map viewer renders and updates for the active space
+- [ ] Inspector UI shows context payload, human-readable diff, and raw JSON with `response.id`
 - [ ] "Save these ideas" persists `mindmap.json` and reloads state
 - [ ] Prior snapshot loads at conversation start and informs OOB analysis
 - [ ] All in-scope items checked off above
