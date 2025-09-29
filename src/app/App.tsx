@@ -455,7 +455,6 @@ function AppInner() {
         sendSimulatedUserMessage(`Switch to the Space "${selectedSpaceName}" for file operations.`);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSpaceName]);
 
   const handleSendTextMessage = () => {

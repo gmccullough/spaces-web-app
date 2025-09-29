@@ -124,7 +124,7 @@ export default function SpacePickerModal({ isOpen, isBlocking, onSelectJustTalk,
         )}
 
         {!loading && !error && items.length === 0 && (
-          <div className="text-gray-600">No spaces yet. Use "Just talk" to begin.</div>
+          <div className="text-gray-600">No spaces yet. Use &quot;Just talk&quot; to begin.</div>
         )}
 
         {!isBlocking && (
