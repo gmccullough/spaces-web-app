@@ -15,42 +15,64 @@ function pretty(obj: any) {
 export default function MindMapInspector({ isOpen, onClose }: MindMapInspectorProps) {
   const { loggedEvents } = useEvent();
   const [activeTab, setActiveTab] = React.useState<'context'|'diff'|'json'>('context');
+  const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
 
-  // Very first version: scan recent events for response.create and response.completed payloads.
-  const latestContext = React.useMemo(() => {
-    const rev = [...loggedEvents].reverse();
-    // Find most recent client response.create that includes instructions/messages
-    const found = rev.find((e) => e.direction === 'client' && e.eventName.startsWith('response.create'));
-    return found?.eventData ?? {};
+  type FeedItem = {
+    responseId: string;
+    timestamp: string;
+    response: any; // raw response payload
+    diff?: any; // parsed JSON with ops
+    request?: any; // nearest prior client request event
+  };
+
+  // Build chronological feed of OOB responses for channel spaces-mindmap
+  const feed: FeedItem[] = React.useMemo(() => {
+    const out: FeedItem[] = [];
+    for (let i = 0; i < loggedEvents.length; i++) {
+      const e = loggedEvents[i];
+      if (e.direction !== 'server' || e.eventName !== 'response.done') continue;
+      const channel = e.eventData?.response?.metadata?.channel;
+      if (channel !== 'spaces-mindmap') continue;
+      const response = e.eventData?.response;
+      const content = response?.output?.[0]?.content?.[0];
+      let diff: any | undefined = undefined;
+      try {
+        if (content?.type === 'text' && typeof content?.text === 'string') {
+          diff = JSON.parse(content.text);
+        }
+        if (!diff && content?.type === 'audio' && typeof content?.transcript === 'string') {
+          diff = JSON.parse(content.transcript);
+        }
+      } catch {}
+      // Find nearest prior analyze request
+      let request: any | undefined = undefined;
+      for (let j = i - 1; j >= 0; j--) {
+        const c = loggedEvents[j];
+        if (c.direction === 'client' && c.eventName.startsWith('response.create')) {
+          const ch2 = c.eventData?.response?.metadata?.channel || c.eventData?.metadata?.channel;
+          if (ch2 === 'spaces-mindmap') { request = c.eventData; break; }
+        }
+      }
+      out.push({ responseId: response?.id, timestamp: e.timestamp, response, diff, request });
+    }
+    // keep only last 100
+    return out.slice(-100);
   }, [loggedEvents]);
 
-  const latestJson = React.useMemo(() => {
-    const rev = [...loggedEvents].reverse();
-    // Find most recent server response.completed or transport with payload
-    const found = rev.find((e) => e.direction === 'server' && (e.eventName.includes('response') || e.eventName.includes('transport')));
-    const payload = found?.eventData ?? {};
-    // If the payload is a message with audio transcript text, try to parse JSON from it
-    try {
-      const content = payload?.response?.output?.[0]?.content?.[0];
-      if (content?.type === 'input_text' && typeof content?.text === 'string') {
-        return JSON.parse(content.text);
-      }
-      if (content?.type === 'text' && typeof content?.text === 'string') {
-        return JSON.parse(content.text);
-      }
-      if (content?.type === 'audio' && typeof content?.transcript === 'string') {
-        // Some models return the JSON in the transcript; attempt parse
-        return JSON.parse(content.transcript);
-      }
-    } catch {}
-    // Fallback: return the response object if present, else raw payload
-    return payload?.response ?? payload;
-  }, [loggedEvents]);
+  // Maintain selection: default to newest if none, or clamp when feed changes
+  React.useEffect(() => {
+    if (feed.length === 0) { setSelectedIndex(null); return; }
+    if (selectedIndex === null || selectedIndex >= feed.length) {
+      setSelectedIndex(feed.length - 1);
+    }
+  }, [feed.length]);
 
-  // Render a crude diff summary when the JSON payload contains ops
+  const selected = (selectedIndex !== null && selectedIndex >= 0 && selectedIndex < feed.length)
+    ? feed[selectedIndex]
+    : undefined;
+
   const diffLines = React.useMemo(() => {
-    // Accept both flat ops and nested { add_node: {...} } forms
-    const ops = (latestJson?.output?.content?.[0]?.json?.ops) || latestJson?.ops || [];
+    const ops = selected?.diff?.ops || [];
     if (!Array.isArray(ops)) return [] as string[];
     return ops.map((raw: any, idx: number) => {
       const op = normalizeOp(raw);
@@ -68,7 +90,7 @@ export default function MindMapInspector({ isOpen, onClose }: MindMapInspectorPr
           return `#${idx}: ${op.type || 'unknown'}`;
       }
     });
-  }, [latestJson]);
+  }, [selected]);
 
   function normalizeOp(raw: any): any | undefined {
     if (!raw || typeof raw !== 'object') return undefined;
@@ -91,30 +113,67 @@ export default function MindMapInspector({ isOpen, onClose }: MindMapInspectorPr
           <button onClick={onClose} className="px-2 py-1 border rounded-md">Close</button>
         </div>
 
-        <div className="flex gap-2 mb-2">
-          <button className={(activeTab==='context'?'bg-gray-800 text-white':'bg-gray-100')+" px-2 py-1 rounded"} onClick={()=>setActiveTab('context')}>Context</button>
-          <button className={(activeTab==='diff'?'bg-gray-800 text-white':'bg-gray-100')+" px-2 py-1 rounded"} onClick={()=>setActiveTab('diff')}>Diff</button>
-          <button className={(activeTab==='json'?'bg-gray-800 text-white':'bg-gray-100')+" px-2 py-1 rounded"} onClick={()=>setActiveTab('json')}>JSON</button>
-        </div>
-
-        <div className="flex-1 overflow-auto border rounded-md p-2 bg-gray-50">
-          {activeTab === 'context' && (
-            <pre className="whitespace-pre-wrap text-sm">{pretty(latestContext)}</pre>
-          )}
-          {activeTab === 'diff' && (
-            <div className="text-sm">
-              {diffLines.length === 0 ? (
-                <div className="text-gray-500">No diff ops detected yet.</div>
+        <div className="flex gap-3 flex-1 min-h-0">
+          {/* Feed list */}
+          <div className="w-64 border rounded-md overflow-hidden flex flex-col">
+            <div className="px-2 py-1 border-b text-sm flex items-center justify-between">
+              <div>OOB Responses ({feed.length})</div>
+              <button className="text-xs underline" onClick={() => setSelectedIndex(feed.length ? feed.length - 1 : null)}>Newest</button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              {feed.length === 0 ? (
+                <div className="text-gray-500 p-2 text-sm">No responses yet.</div>
               ) : (
-                <ul className="list-disc pl-5">
-                  {diffLines.map((l, i) => <li key={i}>{l}</li>)}
+                <ul>
+                  {feed.map((item, idx) => {
+                    const opsCount = Array.isArray(item?.diff?.ops) ? item.diff.ops.length : 0;
+                    const shortId = (item.responseId || '').slice(-6);
+                    const isSel = selectedIndex === idx;
+                    return (
+                      <li key={item.responseId || idx}>
+                        <button
+                          className={(isSel? 'bg-gray-200':'hover:bg-gray-50')+" w-full text-left px-2 py-1 text-xs border-b"}
+                          onClick={() => setSelectedIndex(idx)}
+                        >
+                          <div className="flex justify-between"><span>{item.timestamp}</span><span>#{shortId}</span></div>
+                          <div className="text-gray-600">ops: {opsCount}</div>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
-          )}
-          {activeTab === 'json' && (
-            <pre className="whitespace-pre text-xs">{pretty(latestJson)}</pre>
-          )}
+          </div>
+
+          {/* Detail panel */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex gap-2 mb-2">
+              <button className={(activeTab==='context'?'bg-gray-800 text-white':'bg-gray-100')+" px-2 py-1 rounded"} onClick={()=>setActiveTab('context')}>Context</button>
+              <button className={(activeTab==='diff'?'bg-gray-800 text-white':'bg-gray-100')+" px-2 py-1 rounded"} onClick={()=>setActiveTab('diff')}>Diff</button>
+              <button className={(activeTab==='json'?'bg-gray-800 text-white':'bg-gray-100')+" px-2 py-1 rounded"} onClick={()=>setActiveTab('json')}>JSON</button>
+            </div>
+
+            <div className="flex-1 overflow-auto border rounded-md p-2 bg-gray-50">
+              {activeTab === 'context' && (
+                <pre className="whitespace-pre-wrap text-sm">{pretty(selected?.request ?? {})}</pre>
+              )}
+              {activeTab === 'diff' && (
+                <div className="text-sm">
+                  {diffLines.length === 0 ? (
+                    <div className="text-gray-500">No diff ops detected yet.</div>
+                  ) : (
+                    <ul className="list-disc pl-5">
+                      {diffLines.map((l, i) => <li key={i}>{l}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {activeTab === 'json' && (
+                <pre className="whitespace-pre text-xs">{pretty(selected?.diff ?? selected?.response ?? {})}</pre>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

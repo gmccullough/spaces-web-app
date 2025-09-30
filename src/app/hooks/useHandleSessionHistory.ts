@@ -13,7 +13,7 @@ export function useHandleSessionHistory() {
     updateTranscriptItem,
   } = useTranscript();
 
-  const { logServerEvent } = useEvent();
+  const { logServerEvent, logClientEvent } = useEvent();
 
   /* ----------------------- helpers ------------------------- */
 
@@ -91,6 +91,7 @@ export function useHandleSessionHistory() {
 
     const { itemId, role, content = [] } = item;
     if (itemId && role) {
+      try { logClientEvent({ type: 'oob.turn_boundary', role, itemId }); } catch {}
       const isUser = role === "user";
       let text = extractMessageText(content);
 
@@ -121,6 +122,7 @@ export function useHandleSessionHistory() {
 
       if (text) {
         updateTranscriptMessage(itemId, text, false);
+        try { logClientEvent({ type: 'oob.transcript_update', itemId, isFinal: false }); } catch {}
       }
     });
   }
@@ -143,6 +145,7 @@ export function useHandleSessionHistory() {
         : item.transcript;
     if (itemId) {
       updateTranscriptMessage(itemId, finalTranscript, false);
+      try { logClientEvent({ type: 'oob.transcript_update', itemId, isFinal: true }); } catch {}
       // Use the ref to get the latest transcriptItems
       const transcriptItem = transcriptItems.find((i) => i.itemId === itemId);
       updateTranscriptItem(itemId, { status: 'DONE' });

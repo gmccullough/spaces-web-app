@@ -106,6 +106,23 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
       // additional transport events
       sessionRef.current.on("transport_event", handleTransportEvent);
+
+      // realtime response lifecycle logging for observability
+      (sessionRef.current as any).on("response.created", (ev: any) => {
+        try { logServerEvent(ev); } catch {}
+      });
+      (sessionRef.current as any).on("response.delta", (ev: any) => {
+        try { logServerEvent(ev); } catch {}
+      });
+      (sessionRef.current as any).on("response.output_text.delta", (ev: any) => {
+        try { logServerEvent(ev); } catch {}
+      });
+      (sessionRef.current as any).on("response.done", (ev: any) => {
+        try { logServerEvent(ev); } catch {}
+      });
+      (sessionRef.current as any).on("response.error", (ev: any) => {
+        try { logServerEvent(ev); } catch {}
+      });
     }
   }, [sessionRef.current]);
 

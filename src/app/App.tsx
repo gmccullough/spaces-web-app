@@ -23,6 +23,7 @@ import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { mindMapDiffJsonSchema } from "@/app/lib/spaces/types";
 import { useEvent } from "@/app/contexts/EventContext";
 import { useRealtimeSession } from "./hooks/useRealtimeSession";
+import { useSpacesMindMap } from "./hooks/useSpacesMindMap";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
 // Agent configs
@@ -62,7 +63,8 @@ function AppInner() {
     addTranscriptMessage,
     addTranscriptBreadcrumb,
   } = useTranscript();
-  const { logClientEvent, logServerEvent } = useEvent();
+  const mindMap = useSpacesMindMap();
+  const { loggedEvents, logClientEvent, logServerEvent } = useEvent();
 
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
@@ -215,6 +217,13 @@ function AppInner() {
   }, []);
 
   const { hasMadeInitialSelection, selectedSpaceName } = useSpaceSelection();
+  const inFlightRef = useRef<boolean>(false);
+  const autoTimerRef = useRef<number | null>(null);
+  const analyzeTimeoutRef = useRef<number | null>(null);
+  const lastProcessedResponseIdRef = useRef<string | null>(null);
+  const lastScheduledMsgKeyRef = useRef<string | null>(null);
+  const lastScheduledFinalItemIdRef = useRef<string | null>(null);
+  const lastScheduledResponseIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (selectedAgentName && sessionStatus === "DISCONNECTED" && hasMadeInitialSelection) {
@@ -488,6 +497,7 @@ function AppInner() {
 
   // Manual OOB analyze-now: create a response outside default conversation
   const handleAnalyzeNow = () => {
+    if (inFlightRef.current) { try { logClientEvent({ type: 'oob.skip', reason: 'in_flight' }); } catch {}; return; }
     try {
       // Build a tiny bounded context from last few transcript messages
       const msgs = transcriptItems
@@ -509,10 +519,100 @@ function AppInner() {
 
       // Log + send for Inspector visibility
       sendClientEvent(eventObj, 'analyze_now');
+      try { logClientEvent({ type: 'oob.analyze_start', contextChars: msgs.length }); } catch {}
+      inFlightRef.current = true;
+      if (analyzeTimeoutRef.current) window.clearTimeout(analyzeTimeoutRef.current);
+      analyzeTimeoutRef.current = window.setTimeout(() => {
+        inFlightRef.current = false;
+        try { addTranscriptBreadcrumb('MindMap analyze timeout; guard reset'); } catch {}
+        try { logClientEvent({ type: 'oob.inflight_reset_timeout' }); } catch {}
+      }, 6000);
     } catch (err) {
       console.error('Analyze now failed', err);
     }
   };
+
+  // Listen for server responses and apply diffs only when channel matches and status completed
+  // Apply diffs when a response.done with channel spaces-mindmap arrives via loggedEvents
+  useEffect(() => {
+    const rev = [...loggedEvents].reverse();
+    const found = rev.find((e) => e.direction === 'server' && e.eventName === 'response.done');
+    if (!found) return;
+    const payload = found.eventData;
+    const channel = payload?.response?.metadata?.channel;
+    if (channel !== 'spaces-mindmap') return;
+    const responseId = payload?.response?.id as string | undefined;
+    if (responseId && lastProcessedResponseIdRef.current === responseId) {
+      return;
+    }
+    const content = payload?.response?.output?.[0]?.content?.[0];
+    let diff: any = undefined;
+    if (content?.type === 'text' && typeof content?.text === 'string') {
+      try { diff = JSON.parse(content.text); } catch {}
+    }
+    if (!diff || !diff.ops) return;
+    mindMap.applyDiff(diff);
+    try { logClientEvent({ type: 'oob.applied', ops: diff.ops.length, responseId }); } catch {}
+    inFlightRef.current = false;
+    if (responseId) lastProcessedResponseIdRef.current = responseId;
+    if (analyzeTimeoutRef.current) {
+      window.clearTimeout(analyzeTimeoutRef.current);
+      analyzeTimeoutRef.current = null;
+    }
+  }, [loggedEvents]);
+
+  // Debounced auto OOB trigger on final transcript updates only (turn boundaries)
+  useEffect(() => {
+    if (sessionStatus !== 'CONNECTED') return;
+    const rev = [...loggedEvents].reverse();
+    const lastFinal = rev.find((e) => e.direction === 'client' && e.eventName === 'oob.transcript_update' && e.eventData?.isFinal);
+    const itemId = lastFinal?.eventData?.itemId as string | undefined;
+    if (!itemId) return;
+    if (lastScheduledFinalItemIdRef.current === itemId) return;
+    if (inFlightRef.current) { try { logClientEvent({ type: 'oob.schedule_skipped_inflight' }); } catch {}; return; }
+    lastScheduledFinalItemIdRef.current = itemId;
+    try { logClientEvent({ type: 'oob.schedule', reason: 'final_transcript', itemId }); } catch {}
+    if (autoTimerRef.current) window.clearTimeout(autoTimerRef.current);
+    autoTimerRef.current = window.setTimeout(() => {
+      handleAnalyzeNow();
+    }, 800);
+  }, [loggedEvents, sessionStatus]);
+
+  // Also schedule after assistant completes a default conversation turn (response.done without OOB channel)
+  useEffect(() => {
+    if (sessionStatus !== 'CONNECTED') return;
+    const rev = [...loggedEvents].reverse();
+    const lastDone = rev.find((e) => e.direction === 'server' && e.eventName === 'response.done');
+    if (!lastDone) return;
+    const resp = lastDone.eventData?.response;
+    const channel = resp?.metadata?.channel;
+    const respId = resp?.id as string | undefined;
+    if (channel === 'spaces-mindmap') return; // ignore OOB completions
+    if (!respId || lastScheduledResponseIdRef.current === respId) return;
+    if (inFlightRef.current) { try { logClientEvent({ type: 'oob.schedule_skipped_inflight' }); } catch {}; return; }
+    lastScheduledResponseIdRef.current = respId;
+    try { logClientEvent({ type: 'oob.schedule', reason: 'assistant_done', responseId: respId }); } catch {}
+    if (autoTimerRef.current) window.clearTimeout(autoTimerRef.current);
+    autoTimerRef.current = window.setTimeout(() => {
+      handleAnalyzeNow();
+    }, 800);
+  }, [loggedEvents, sessionStatus]);
+
+  // Reset in-flight on response.error for OOB channel
+  useEffect(() => {
+    const rev = [...loggedEvents].reverse();
+    const found = rev.find((e) => e.direction === 'server' && e.eventName === 'response.error');
+    if (!found) return;
+    const payload = found.eventData;
+    const channel = payload?.response?.metadata?.channel;
+    if (channel !== 'spaces-mindmap') return;
+    inFlightRef.current = false;
+    if (analyzeTimeoutRef.current) {
+      window.clearTimeout(analyzeTimeoutRef.current);
+      analyzeTimeoutRef.current = null;
+    }
+    try { logClientEvent({ type: 'oob.inflight_reset_error' }); } catch {}
+  }, [loggedEvents]);
 
   const handleTalkButtonDown = () => {
     if (sessionStatus !== 'CONNECTED') return;
