@@ -26,6 +26,10 @@ export type PutOptions = { ifNoneMatch?: '*' };
 // ----------------------- Mind Map (Realtime OOB) -------------------------
 
 export const SPACES_MINDMAP_CHANNEL = "spaces-mindmap" as const;
+export const MINDMAP_DIFF_SCHEMA_NAME = "mindmap_diff_v1" as const;
+export const MINDMAP_DEBOUNCE_MS = 800;
+export const MINDMAP_INFLIGHT_TIMEOUT_MS = 6000;
+export const MINDMAP_MAX_CONTEXT_TURNS = 8;
 
 export type MindMapOp =
   | {
@@ -63,7 +67,7 @@ export type MindMapDiff = {
 // JSON Schema for response_format: json_schema → use inside response.create
 export const mindMapDiffJsonSchema: Record<string, any> = {
   $schema: 'http://json-schema.org/draft-07/schema#',
-  title: 'mindmap_diff_v1',
+  title: MINDMAP_DIFF_SCHEMA_NAME,
   type: 'object',
   additionalProperties: false,
   required: ['ops'],
@@ -122,3 +126,18 @@ export const mindMapDiffJsonSchema: Record<string, any> = {
     },
   },
 };
+
+// Helper to build a response.create event with proper OOB configuration
+export function buildMindMapOOBRequest(params: { spaceName?: string; instructions: string }) {
+  const { spaceName, instructions } = params;
+  return {
+    type: 'response.create',
+    response: {
+      conversation: 'none',
+      tool_choice: 'none',
+      modalities: ['text'],
+      instructions,
+      metadata: { channel: SPACES_MINDMAP_CHANNEL, spaceName },
+    },
+  } as const;
+}

@@ -13,6 +13,11 @@ import { SessionStatus } from '../types';
 export interface RealtimeSessionCallbacks {
   onConnectionChange?: (status: SessionStatus) => void;
   onAgentHandoff?: (agentName: string) => void;
+  onResponseCreated?: (payload: any) => void;
+  onResponseDelta?: (payload: any) => void;
+  onResponseOutputTextDelta?: (payload: any) => void;
+  onResponseDone?: (payload: any) => void;
+  onResponseError?: (payload: any) => void;
 }
 
 export interface ConnectOptions {
@@ -110,18 +115,23 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       // realtime response lifecycle logging for observability
       (sessionRef.current as any).on("response.created", (ev: any) => {
         try { logServerEvent(ev); } catch {}
+        try { callbacks.onResponseCreated?.(ev); } catch {}
       });
       (sessionRef.current as any).on("response.delta", (ev: any) => {
         try { logServerEvent(ev); } catch {}
+        try { callbacks.onResponseDelta?.(ev); } catch {}
       });
       (sessionRef.current as any).on("response.output_text.delta", (ev: any) => {
         try { logServerEvent(ev); } catch {}
+        try { callbacks.onResponseOutputTextDelta?.(ev); } catch {}
       });
       (sessionRef.current as any).on("response.done", (ev: any) => {
         try { logServerEvent(ev); } catch {}
+        try { callbacks.onResponseDone?.(ev); } catch {}
       });
       (sessionRef.current as any).on("response.error", (ev: any) => {
         try { logServerEvent(ev); } catch {}
+        try { callbacks.onResponseError?.(ev); } catch {}
       });
     }
   }, [sessionRef.current]);

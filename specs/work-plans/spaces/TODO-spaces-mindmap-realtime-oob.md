@@ -49,13 +49,13 @@
   - **Context**: Aligns with OOB structured outputs; labels used as keys
 
 ### Phase 2A: Realtime OOB Backbone (Manual)
-- [ ] **Add** **OOB Channel Constants** - Channel + metadata keys
+- [x] **Add** **OOB Channel Constants** - Channel + metadata keys
   - **Files**: `src/app/lib/spaces/types.ts` (constants)
   - **Dependencies**: Realtime session hook
   - **Validation**: Constants used across hook and UI
   - **Context**: `channel: "spaces-mindmap"`, metadata includes `spaceName`
 
-- [ ] **Configure** **OOB response.create** - `conversation: "none"` + schema
+- [x] **Configure** **OOB response.create** - `conversation: "none"` + schema
   - **Files**: `src/app/hooks/useRealtimeSession.ts`
   - **Dependencies**: Diff schema definition
   - **Validation**: `response.create` sets `conversation: "none"` and `response_format: { type: "json_schema", schema_name: "mindmap_diff_v1" }`
@@ -67,31 +67,31 @@
   - **Validation**: Uses last N turns (configurable) plus rolling summary and prior snapshot content in instructions
   - **Context**: Predictable token control; avoids full-conversation bloat
 
-- [ ] **Debounce & Single In-Flight** - Cancellation/supersede policy
+- [x] **Debounce & Single In-Flight** - Cancellation/supersede policy
   - **Files**: `src/app/hooks/useRealtimeSession.ts`
   - **Dependencies**: Realtime client
   - **Validation**: At most one OOB per space in flight; new turns cancel/supersede prior; debounce ≈500–800ms
   - **Context**: Prevents thrash; ensures latest context wins
 
-- [ ] **Gate on Terminal Event** - Apply atomically on completion
+- [x] **Gate on Terminal Event** - Apply atomically on completion
   - **Files**: `src/app/hooks/useRealtimeSession.ts`, `src/app/hooks/useSpacesMindMap.ts` (new)
   - **Dependencies**: Realtime events API
   - **Validation**: Track `response.id`; buffer partials; apply once `response.completed` (or equivalent) is observed
   - **Context**: Deterministic, atomic diff application
 
-- [ ] **Enforce** **Structured Outputs** - JSON schema contract
+- [x] **Enforce** **Structured Outputs** - JSON schema contract
   - **Files**: `src/app/hooks/useRealtimeSession.ts`
   - **Dependencies**: Diff schema definition
   - **Validation**: Non-conforming payloads rejected with visible dev log; optional one retry before surfacing error
   - **Context**: Reliability for renderer
 
-- [ ] **Add** **Manual Analyze Control** - Trigger OOB on demand
+- [x] **Add** **Manual Analyze Control** - Trigger OOB on demand
   - **Files**: `src/app/components/Toolbar.tsx` (or similar), `src/app/hooks/useRealtimeSession.ts`
   - **Dependencies**: OOB backbone above
   - **Validation**: Clicking "Analyze now" issues OOB `response.create`; Inspector receives and displays results; no state mutation yet
   - **Context**: Simplifies early manual testing and debugging
 
-- [ ] **Create** **MindMapInspector** - Context/Diff/JSON + Activity feed
+- [x] **Create** **MindMapInspector** - Context/Diff/JSON + Activity feed
   - **Files**: `src/app/components/MindMapInspector.tsx` (new)
   - **Dependencies**: Mind map OOB correlation state
   - **Validation**: Tabs: Context (exact payload used incl. message IDs), Diff (human-readable ops list), JSON (raw payload with `response.id`); Activity feed keyed by `response.id`
@@ -99,13 +99,13 @@
 
 ### Phase 2B: OOB Diff Application & Auto-Trigger
 
-- [ ] **Implement** **OOB Event Filter & Reducer** - Apply diffs in-memory
+- [x] **Implement** **OOB Event Filter & Reducer** - Apply diffs in-memory
   - **Files**: `src/app/hooks/useRealtimeSession.ts`, `src/app/hooks/useSpacesMindMap.ts` (new)
   - **Dependencies**: Diff schema; space context
   - **Validation**: Only events where `metadata.channel === "spaces-mindmap"` and `metadata.spaceName === currentSpaceName` are reduced; apply atomically at terminal completion; maintain `appliedResponseIndex` to avoid reordering
   - **Context**: Maintains ID-less graph; determines existing vs new concept by label match
 
-- [ ] **Enable** **Auto OOB Trigger After Each Turn** - Background updates
+- [x] **Enable** **Auto OOB Trigger After Each Turn** - Background updates
   - **Files**: `src/app/hooks/useRealtimeSession.ts`
   - **Dependencies**: Debounce, single in-flight, gating
   - **Validation**: After user or assistant turn, an OOB request is scheduled (debounced). Manual control remains available
@@ -280,7 +280,7 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
 - Lightweight realtime hints, per space, one large mind map entity
 - Load `mindmap.json` as prior context at conversation start
 - OOB returns diffs; trigger after every turn; use bounded transcript window + optional rolling summary (not full conversation)
-- OOB responses are created with `conversation: "none"` and strict `response_format: json_schema` to avoid contaminating the default thread
+- OOB responses are created with `conversation: "none"`; schema is enforced client-side (Realtime does not accept `response_format` on `response.create`)
 - Single in-flight OOB per space with debounce; older requests are cancelled/superseded
 - Agent determines existing concept vs new (label-based), chooses when to create new label
 - Salience is 1–10, relative to existing items in the graph
@@ -311,7 +311,7 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
 - [ ] Stabilization: collisions, salience visuals, optimistic concurrency
 
 ### Final Completion Criteria
-- [ ] OOB diffs apply live without disrupting main chat; created with `conversation: "none"` and `response_format: json_schema`
+- [ ] OOB diffs apply live without disrupting main chat; created with `conversation: "none"` and validated client-side against `mindmap_diff_v1`
 - [ ] Mind map viewer renders and updates for the active space
 - [ ] Inspector UI shows context payload, human-readable diff, and raw JSON with `response.id`
 - [ ] "Save these ideas" persists `mindmap.json` and reloads state
@@ -319,3 +319,34 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
 - [ ] All in-scope items checked off above
 
 
+
+## Mid-implementation Refactor for OOB
+
+- [x] Suppress *.delta items in the logs by default. Add a toggle checkbox to the top right of the pane.
+
+- [x] Set the logs to not auto scroll by default. Add a toggle checkbox to the top right of the pane.
+
+- [x] Extract OOB orchestration into `useMindMapOOB` hook
+  - Files: `src/app/hooks/useMindMapOOB.ts` (new), remove orchestration from `src/app/App.tsx`
+  - Expose: `analyzeNow()`, enable/disable auto-scheduler, `onApplied(diff, responseId)`
+  - Validation: Single debounced trigger; timers cleared on unmount; simpler tests
+
+- [x] Centralize event selection and parsing
+  - Files: `src/app/hooks/useRealtimeSession.ts`, small selectors/parsers module
+  - Provide typed callbacks/selector utilities for `response.created|delta|done|error`, parse text/audio once
+  - Validation: No repeated reverse scans; O(1) last-event lookups; consistent parsing
+
+- [x] Consolidate constants and request builder
+  - Files: `src/app/lib/spaces/types.ts` (or `manifest.ts`)
+  - Add: `CHANNEL="spaces-mindmap"`, `SCHEMA_NAME="mindmap_diff_v1"`, `DEBOUNCE_MS`, `INFLIGHT_TIMEOUT_MS`, `MAX_CONTEXT_TURNS`
+  - Helper: `buildMindMapOOBRequest({ spaceName, instructions })` sets `conversation: "none"` and OOB metadata; schema enforced client-side (Realtime `response_format` not supported)
+
+- [x] Harden correlation, cancellation, and space scoping
+  - Track in-flight OOB by `spaceName` and `response.id`; ignore non-matching completions
+  - Supersede older in-flight via `oobCorrelationId` in metadata; ignore mismatched completions
+  - Coalesce triggers (final transcript vs assistant done) with a single debounced scheduler
+
+- [x] Tighten reducer and add focused tests
+  - Files: `src/app/hooks/useSpacesMindMap.ts`, tests under `tests/spaces/`
+  - Edge dedupe via keyed set; label-collision policy; hydrate/reset helpers
+  - Validate diffs against `mindMapDiffJsonSchema` before apply
