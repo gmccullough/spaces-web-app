@@ -10,6 +10,7 @@ import Transcript from "./components/Transcript";
 import Events from "./components/Events";
 import Toolbar from "./components/Toolbar";
 import SpacesFilesPanel from "./components/SpacesFilesPanel";
+import MindMapInspector from "./components/MindMapInspector";
 import SpacePickerModal from "./components/SpacePickerModal";
 import { SpaceSelectionProvider, useSpaceSelection } from "./contexts/SpaceSelectionContext";
 
@@ -19,6 +20,7 @@ import type { RealtimeAgent } from '@openai/agents/realtime';
 
 // Context providers & hooks
 import { useTranscript } from "@/app/contexts/TranscriptContext";
+import { mindMapDiffJsonSchema } from "@/app/lib/spaces/types";
 import { useEvent } from "@/app/contexts/EventContext";
 import { useRealtimeSession } from "./hooks/useRealtimeSession";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
@@ -56,6 +58,7 @@ function AppInner() {
   // via global codecPatch at module load 
 
   const {
+    transcriptItems,
     addTranscriptMessage,
     addTranscriptBreadcrumb,
   } = useTranscript();
@@ -123,6 +126,7 @@ function AppInner() {
       return stored ? stored === 'true' : true;
     },
   );
+  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
   const [selectedVoice, setSelectedVoice] = useState<string>(() => {
     if (typeof window === 'undefined') return 'sage';
     return localStorage.getItem('voice') || 'sage';
@@ -482,6 +486,34 @@ function AppInner() {
     setUserText("");
   };
 
+  // Manual OOB analyze-now: create a response outside default conversation
+  const handleAnalyzeNow = () => {
+    try {
+      // Build a tiny bounded context from last few transcript messages
+      const msgs = transcriptItems
+        .filter((i) => i.type === 'MESSAGE')
+        .slice(-8)
+        .map((i) => `${i.role}: ${i.title}`)
+        .join('\n');
+
+      const eventObj = {
+        type: 'response.create',
+        response: {
+          conversation: 'none',
+          tool_choice: 'none',
+          modalities: ['text'],
+          instructions: `You are a concept extractor. Return ONLY a JSON object with an \"ops\" array; no prose, no audio. Each op is an OBJECT with a \"type\" field where type ∈ {add_node, update_node, add_edge, remove_edge}.\n\nFor type=add_node or update_node, include: {\"type\": \"add_node|update_node\", \"label\": string, \"summary\"?: string, \"keywords\"?: string[], \"salience\"?: number 1-10}.\nFor type=add_edge, include: {\"type\": \"add_edge\", \"sourceLabel\": string, \"targetLabel\": string, \"relation\"?: string, \"confidence\"?: number 0-1}.\nFor type=remove_edge, include: {\"type\": \"remove_edge\", \"sourceLabel\": string, \"targetLabel\": string, \"relation\"?: string}.\n\nAnalyze the conversation (most recent last) and produce minimal diffs strictly in this flat format. Conversation follows:\n\n${msgs}`,
+          metadata: { channel: 'spaces-mindmap' },
+        },
+      } as const;
+
+      // Log + send for Inspector visibility
+      sendClientEvent(eventObj, 'analyze_now');
+    } catch (err) {
+      console.error('Analyze now failed', err);
+    }
+  };
+
   const handleTalkButtonDown = () => {
     if (sessionStatus !== 'CONNECTED') return;
     interrupt();
@@ -638,6 +670,8 @@ function AppInner() {
           onInputDeviceChange={setSelectedInputDeviceId}
           onLogoClick={() => window.location.reload()}
           onLogout={handleLogout}
+          onAnalyzeNow={handleAnalyzeNow}
+          onToggleInspector={() => setIsInspectorOpen((v)=>!v)}
         />
       </div>
 
@@ -658,6 +692,8 @@ function AppInner() {
 
         <Events isExpanded={isEventsPaneExpanded} />
       </div>
+
+      <MindMapInspector isOpen={isInspectorOpen} onClose={() => setIsInspectorOpen(false)} />
 
       
     </div>

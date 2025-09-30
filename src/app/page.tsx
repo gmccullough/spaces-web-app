@@ -36,7 +36,7 @@ export default function Page() {
         <div className="text-center">
           <div className="flex justify-center mb-8">
             <Image
-              src="/spaces-logo.png"
+              src="/logo-new.png"
               alt="Spaces logo"
               width={80}
               height={80}

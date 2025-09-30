@@ -23,6 +23,8 @@ interface ToolbarProps {
   onInputDeviceChange: (deviceId: string) => void;
   onLogoClick: () => void;
   onLogout: () => void;
+  onAnalyzeNow?: () => void;
+  onToggleInspector?: () => void;
 }
 
 function Toolbar({
@@ -46,6 +48,8 @@ function Toolbar({
   onInputDeviceChange,
   onLogoClick,
   onLogout,
+  onAnalyzeNow,
+  onToggleInspector,
 }: ToolbarProps) {
   const isConnected = sessionStatus === "CONNECTED";
   const isConnecting = sessionStatus === "CONNECTING";
@@ -77,7 +81,7 @@ function Toolbar({
       {/* Top row: logo on left, default controls on right */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center cursor-pointer" onClick={onLogoClick}>
-          <Image src="/spaces-logo.png" alt="Spaces Logo" width={48} height={48} className="mr-2" />
+          <Image src="/logo-new.png" alt="Spaces Logo" width={48} height={48} className="mr-2" />
           <div className="uppercase font-medium">Spaces</div>
         </div>
         <div className="flex items-center justify-end gap-3 flex-wrap">
@@ -200,6 +204,22 @@ function Toolbar({
             className="text-sm rounded-md border border-gray-300 px-3 py-1 hover:bg-gray-50"
           >
             Log out
+          </button>
+        </div>
+
+        <div className="flex flex-row items-center gap-2 max-w-full">
+          <button
+            onClick={onAnalyzeNow}
+            disabled={!isConnected}
+            className="text-sm rounded-md border border-gray-300 px-3 py-1 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Analyze now
+          </button>
+          <button
+            onClick={onToggleInspector}
+            className="text-sm rounded-md border border-gray-300 px-3 py-1 hover:bg-gray-50"
+          >
+            Inspector
           </button>
         </div>
       </div>
