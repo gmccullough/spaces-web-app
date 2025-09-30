@@ -350,3 +350,51 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
   - Files: `src/app/hooks/useSpacesMindMap.ts`, tests under `tests/spaces/`
   - Edge dedupe via keyed set; label-collision policy; hydrate/reset helpers
   - Validate diffs against `mindMapDiffJsonSchema` before apply
+
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant UI as App UI (Toolbar/Transcript)
+  participant EC as Event Log (`EventContext`)
+  participant RT as Realtime Session (SDK)
+  participant S as Realtime Server
+  participant OOB as `useMindMapOOB`
+  participant MM as `useSpacesMindMap` (Reducer)
+  participant INS as `MindMapInspector`
+
+  U->>UI: Speak / Type message
+  UI->>RT: Send user text or PTT events
+  UI->>EC: logClientEvent(conversation.item.*, response.create)
+
+  RT->>S: Default conversation request
+  S-->>RT: response.delta (streaming text/audio)
+  RT->>EC: logServerEvent(response.delta) (suppressed in UI by default)
+  S-->>RT: response.done (default channel)
+  RT->>EC: logServerEvent(response.done)
+
+  rect rgb(245,245,255)
+  note over OOB: OOB trigger (debounced)
+  EC-->>OOB: Observe final transcript update OR default response.done
+  OOB->>OOB: Debounce single in-flight with supersede (oobCorrelationId)
+  OOB->>RT: response.create { conversation: "none", metadata: { channel: "spaces-mindmap", spaceName, oobCorrelationId } }
+  OOB->>EC: logClientEvent(analyze_now, oob.analyze_start/supersede)
+  end
+
+  RT->>S: OOB request (no default conversation contamination)
+  S-->>RT: response.delta (OOB)
+  RT->>EC: logServerEvent(response.delta) (suppressed in UI by default)
+  S-->>RT: response.done (channel: spaces-mindmap, oobCorrelationId)
+  RT->>EC: logServerEvent(response.done)
+
+  EC-->>OOB: Observe OOB response.done
+  OOB->>OOB: Filter by channel/space check oobCorrelationId matches current
+  OOB->>OOB: Parse JSON client-side validate against `mindMapDiffJsonSchema`
+  OOB->>MM: applyDiff(diff.ops)
+  OOB->>EC: logClientEvent(oob.applied)
+  OOB->>OOB: Clear in-flight if correlation matches
+
+  EC-->>INS: Feed updates (Context/Diff/JSON)
+  INS->>UI: Render activity feed & tabs
+```
