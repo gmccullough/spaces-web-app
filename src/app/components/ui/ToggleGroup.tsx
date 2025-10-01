@@ -24,6 +24,7 @@ type ToggleGroupProps = {
   className?: string;
   ariaLabel?: string;
   disabled?: boolean;
+  prefix?: React.ReactNode;
 };
 
 const sizeStyles: Record<ToggleSize, string> = {
@@ -40,6 +41,7 @@ const ToggleGroup: React.FC<ToggleGroupProps> = ({
   className,
   ariaLabel,
   disabled = false,
+  prefix,
 }) => {
   const optionRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -94,6 +96,11 @@ const ToggleGroup: React.FC<ToggleGroupProps> = ({
 
   return (
     <div role="radiogroup" aria-label={ariaLabel} className={groupClasses}>
+      {prefix ? (
+        <span className="ml-1 mr-[6px] text-gray-500" aria-hidden="true">
+          {prefix}
+        </span>
+      ) : null}
       {options.map((option, index) => {
         const isActive = option.value === value;
         const buttonClasses = cn(

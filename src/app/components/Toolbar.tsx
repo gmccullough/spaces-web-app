@@ -2,7 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import { GearIcon, PersonIcon, SpeakerLoudIcon } from "@radix-ui/react-icons";
+import { GearIcon } from "@radix-ui/react-icons";
 
 import ToggleGroup from "@/app/components/ui/ToggleGroup";
 import IconButton from "@/app/components/ui/IconButton";
@@ -39,14 +39,12 @@ interface ToolbarProps {
 
 const TALK_MODE_OPTIONS = [
   {
-    value: "auto",
-    label: "Auto",
-    icon: <SpeakerLoudIcon className="h-4 w-4" />,
-  },
-  {
     value: "manual",
     label: "Manual",
-    icon: <PersonIcon className="h-4 w-4" />,
+  },
+  {
+    value: "auto",
+    label: "Auto",
   },
 ];
 
@@ -103,19 +101,20 @@ function Toolbar({
 
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-3 md:flex">
-              <ToggleGroup
-                value={talkMode}
-                onChange={handleTalkModeChange}
-                options={TALK_MODE_OPTIONS}
-                ariaLabel="Speech input mode"
-                disabled={!isConnected}
-              />
               <TalkButton
                 isVisible={talkMode === "manual"}
                 isSpeaking={isPTTUserSpeaking}
                 onPress={handleTalkButtonDown}
                 onRelease={handleTalkButtonUp}
                 disabled={!isConnected || isConnecting}
+              />
+              <ToggleGroup
+                value={talkMode}
+                onChange={handleTalkModeChange}
+                options={TALK_MODE_OPTIONS}
+                ariaLabel="Speech input mode"
+                disabled={!isConnected}
+                prefix={<MicrophoneIcon className="h-4 w-4" />}
               />
             </div>
             <IconButton
@@ -129,19 +128,20 @@ function Toolbar({
 
         <div className="mt-4 flex flex-col gap-3 md:hidden">
           <div className="flex flex-wrap items-center gap-3">
-            <ToggleGroup
-              value={talkMode}
-              onChange={handleTalkModeChange}
-              options={TALK_MODE_OPTIONS}
-              ariaLabel="Speech input mode"
-              disabled={!isConnected}
-            />
             <TalkButton
               isVisible={talkMode === "manual"}
               isSpeaking={isPTTUserSpeaking}
               onPress={handleTalkButtonDown}
               onRelease={handleTalkButtonUp}
               disabled={!isConnected || isConnecting}
+            />
+            <ToggleGroup
+              value={talkMode}
+              onChange={handleTalkModeChange}
+              options={TALK_MODE_OPTIONS}
+              ariaLabel="Speech input mode"
+              disabled={!isConnected}
+              prefix={<MicrophoneIcon className="h-4 w-4" />}
             />
           </div>
         </div>
@@ -172,6 +172,26 @@ function Toolbar({
 }
 
 export default Toolbar;
+
+function MicrophoneIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <path d="M12 19v4" />
+      <path d="M8 23h8" />
+    </svg>
+  );
+}
 
 type TalkButtonProps = {
   isVisible: boolean;
@@ -204,7 +224,7 @@ function TalkButton({ isVisible, isSpeaking, disabled, onPress, onRelease }: Tal
       onTouchStart={onPress}
       onTouchEnd={onRelease}
     >
-      <SpeakerLoudIcon className="h-4 w-4" />
+      <MicrophoneIcon className="h-4 w-4" />
       <span>{label}</span>
     </button>
   );
