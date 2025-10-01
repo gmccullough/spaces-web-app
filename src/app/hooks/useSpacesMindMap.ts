@@ -3,6 +3,7 @@
 import React from "react";
 import type { MindMapDiff, MindMapOp } from "@/app/lib/spaces/types";
 import { mindMapDiffJsonSchema } from "@/app/lib/spaces/types";
+import { mindMapEdgeKey, normalizeMindMapOp } from "@/app/lib/spaces/mindmapUtils";
 
 export type MindMapNode = {
   label: string;
@@ -51,7 +52,7 @@ export function useSpacesMindMap() {
         next.nodesByLabel[n.label] = { label: n.label, summary: n.summary, keywords: n.keywords, salience: n.salience };
       }
       for (const e of snapshot.edges || []) {
-        const key = edgeKey(e.sourceLabel, e.targetLabel, e.relation);
+        const key = mindMapEdgeKey(e.sourceLabel, e.targetLabel, e.relation);
         if (!edgeKeySetRef.current.has(key)) {
           edgeKeySetRef.current.add(key);
           next.edges.push({ sourceLabel: e.sourceLabel, targetLabel: e.targetLabel, relation: e.relation, confidence: e.confidence });
@@ -68,9 +69,9 @@ export function useSpacesMindMap() {
 
 function applyOps(prev: MindMapState, ops: MindMapOp[], edgeKeySet?: Set<string>): MindMapState {
   const next = { ...prev, nodesByLabel: { ...prev.nodesByLabel }, edges: [...prev.edges] };
-  const keys = edgeKeySet ?? new Set<string>(next.edges.map((e) => edgeKey(e.sourceLabel, e.targetLabel, e.relation)));
+  const keys = edgeKeySet ?? new Set<string>(next.edges.map((e) => mindMapEdgeKey(e.sourceLabel, e.targetLabel, e.relation)));
   for (const raw of ops) {
-    const op = normalizeOp(raw);
+    const op = normalizeMindMapOp(raw) as MindMapOp | undefined;
     if (!op) continue;
     switch (op.type) {
       case 'add_node': {
@@ -92,7 +93,7 @@ function applyOps(prev: MindMapState, ops: MindMapOp[], edgeKeySet?: Set<string>
       }
       case 'add_edge': {
         const { sourceLabel, targetLabel, relation, confidence } = op as any;
-        const key = edgeKey(sourceLabel, targetLabel, relation);
+        const key = mindMapEdgeKey(sourceLabel, targetLabel, relation);
         if (!keys.has(key)) {
           keys.add(key);
           next.edges.push({ sourceLabel, targetLabel, relation, confidence });
@@ -101,29 +102,14 @@ function applyOps(prev: MindMapState, ops: MindMapOp[], edgeKeySet?: Set<string>
       }
       case 'remove_edge': {
         const { sourceLabel, targetLabel, relation } = op as any;
-        const key = edgeKey(sourceLabel, targetLabel, relation);
+        const key = mindMapEdgeKey(sourceLabel, targetLabel, relation);
         if (keys.has(key)) keys.delete(key);
-        next.edges = next.edges.filter((e) => edgeKey(e.sourceLabel, e.targetLabel, e.relation) !== key);
+        next.edges = next.edges.filter((e) => mindMapEdgeKey(e.sourceLabel, e.targetLabel, e.relation) !== key);
         break;
       }
     }
   }
   return next;
-}
-
-function normalizeOp(raw: any): MindMapOp | undefined {
-  if (!raw || typeof raw !== 'object') return undefined as any;
-  if ((raw as any).type) return raw as any;
-  const nestedKey = Object.keys(raw)[0];
-  const val = (raw as any)[nestedKey];
-  if (nestedKey && val && typeof val === 'object') {
-    return { type: nestedKey, ...val } as any;
-  }
-  return undefined;
-}
-
-function edgeKey(a?: string, b?: string, relation?: string): string {
-  return `${a ?? ''}→${b ?? ''}#${relation ?? ''}`;
 }
 
 function validateDiff(diff: MindMapDiff): boolean {
@@ -135,7 +121,7 @@ function validateDiff(diff: MindMapDiff): boolean {
     if (title !== 'mindmap_diff_v1') return true; // schema not aligned; don't block
     // Quick pass: ensure each op has type
     for (const raw of diff.ops) {
-      const op = normalizeOp(raw);
+      const op = normalizeMindMapOp(raw);
       if (!op || !('type' in op)) return false;
     }
     return true;
@@ -158,5 +144,4 @@ function normalizeSalience(state: MindMapState): MindMapState {
   }
   return { ...state, nodesByLabel: nextNodesByLabel };
 }
-
 

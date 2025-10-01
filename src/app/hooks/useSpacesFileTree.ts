@@ -3,6 +3,7 @@
 import React from "react";
 import { FileSavedEvent } from "@/app/contexts/EventContext";
 import { listSpaceFiles } from "@/app/lib/spaces/client";
+import { useSpaceFileSaved } from "@/app/lib/spaces/useSpaceFileSaved";
 
 export type TreeNode = {
   path: string;
@@ -91,30 +92,20 @@ export function useSpacesFileTree(spaceName: string | undefined) {
 
   const getDirState = React.useCallback((dir: string) => dirStates[dir || ""] || { loading: false }, [dirStates]);
 
-  // Listen for fileSaved to refresh affected directories (debounced)
-  React.useEffect(() => {
-    if (!spaceName) return;
-    let debounceTimer: any;
-    const handler = (ev: Event) => {
-      const ce = ev as CustomEvent<FileSavedEvent>;
-      const e = ce?.detail;
-      if (!e || e.spaceName !== spaceName) return;
-      // Refresh root and parent directory if known
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(async () => {
+  useSpaceFileSaved(
+    spaceName,
+    React.useCallback(
+      async (detail: FileSavedEvent) => {
         try {
           await ensureDir("", true);
-          const parent = getParentDir(e.path);
+          const parent = getParentDir(detail.path);
           if (parent !== null) await ensureDir(parent, true);
         } catch {}
-      }, 150);
-    };
-    window.addEventListener('spaces:fileSaved', handler as EventListener);
-    return () => {
-      window.removeEventListener('spaces:fileSaved', handler as EventListener);
-      clearTimeout(debounceTimer);
-    };
-  }, [spaceName, ensureDir]);
+      },
+      [ensureDir]
+    ),
+    { debounceMs: 150 }
+  );
 
   return {
     isReady,
@@ -137,5 +128,3 @@ function getParentDir(p: string | null): string | null {
   const i = p.lastIndexOf('/');
   return i >= 0 ? p.substring(0, i) : "";
 }
-
-

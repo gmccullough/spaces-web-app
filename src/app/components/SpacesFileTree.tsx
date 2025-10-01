@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useSpacesFileTree } from "@/app/hooks/useSpacesFileTree";
-// no channel constant needed in this component
+import { MINDMAP_DISPLAY_NAME, MINDMAP_VIRTUAL_PATH } from "@/app/lib/spaces/constants";
 
 type Props = {
   spaceName?: string;
@@ -30,7 +30,7 @@ export default function SpacesFileTree({ spaceName, onSelectPath, includeMindMap
   const items = React.useMemo(() => {
     const base = root.nodes || [];
     if (!includeMindMapEntry) return base;
-    const specialMindMap = { path: "__mindmap__", name: "Mind Map", isDirectory: false } as any;
+    const specialMindMap = { path: MINDMAP_VIRTUAL_PATH, name: MINDMAP_DISPLAY_NAME, isDirectory: false } as any;
     // Prepend special entry at root
     return [specialMindMap, ...base];
   }, [root.nodes, includeMindMapEntry]);
@@ -52,7 +52,7 @@ export default function SpacesFileTree({ spaceName, onSelectPath, includeMindMap
 
   const isDirectoryPath = (p: string | null): boolean => {
     if (!p) return false;
-    if (p === "__mindmap__") return false;
+    if (p === MINDMAP_VIRTUAL_PATH) return false;
     const parent = getParentDir(p);
     const parentState = getDirState(parent || "");
     const name = p.substring(p.lastIndexOf('/') + 1);
@@ -178,15 +178,14 @@ function TreeDir({ dir, getDirState, ensureDir, expandedDirs, toggleExpand, sele
       ))}
       {/* Special virtual entry */}
       {includeMindMapEntry && dir === "" && (
-        <li key="__mindmap__">
-          <div role="treeitem" aria-selected={selectedPath === "__mindmap__"} className={`px-2 py-1 rounded cursor-pointer ${selectedPath === "__mindmap__" ? 'bg-blue-50' : ''}`} onClick={() => { setSelectedPath("__mindmap__"); onSelectPath?.("__mindmap__"); }}>
+        <li key={MINDMAP_VIRTUAL_PATH}>
+          <div role="treeitem" aria-selected={selectedPath === MINDMAP_VIRTUAL_PATH} className={`px-2 py-1 rounded cursor-pointer ${selectedPath === MINDMAP_VIRTUAL_PATH ? 'bg-blue-50' : ''}`} onClick={() => { setSelectedPath(MINDMAP_VIRTUAL_PATH); onSelectPath?.(MINDMAP_VIRTUAL_PATH); }}>
             <span className="mr-1">🧠</span>
-            Mind Map
+            {MINDMAP_DISPLAY_NAME}
           </div>
         </li>
       )}
     </ul>
   );
 }
-
 

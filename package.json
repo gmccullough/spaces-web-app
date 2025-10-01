@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:unit": "vitest run tests/**/*.unit.test.ts",
+    "test:unit": "vitest run",
     "test:integration": "vitest run tests/**/*.integration.test.ts"
   },
   "dependencies": {

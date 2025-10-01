@@ -117,7 +117,15 @@ export async function listSpaces(): Promise<ListSpacesResponse | ErrorEnvelope> 
   if (!res.ok) {
     try { return (await res.json()) as ErrorEnvelope; } catch { return { error: { code: 'HTTP_ERROR', message: String(res.status) } }; }
   }
-  return (await res.json()) as ListSpacesResponse;
+  const json = (await res.json()) as ListSpacesResponse;
+  if (Array.isArray(json.items)) {
+    json.items.sort((a, b) => {
+      const at = a.lastUpdatedAt ? new Date(a.lastUpdatedAt).getTime() : 0;
+      const bt = b.lastUpdatedAt ? new Date(b.lastUpdatedAt).getTime() : 0;
+      return bt - at;
+    });
+  }
+  return json;
 }
 
 export async function createSpace(name: string): Promise<{ created: boolean } | ErrorEnvelope> {
@@ -168,5 +176,4 @@ function stripSpacePrefix(spaceName: string, relativePath: string): string {
   if (relativePath.startsWith(prefix)) return relativePath.substring(prefix.length);
   return relativePath;
 }
-
 

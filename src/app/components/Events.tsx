@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
+import Pane from "@/app/components/ui/Pane";
+import { cn } from "@/app/lib/ui/cn";
 import { useEvent } from "@/app/contexts/EventContext";
+import { useUILayout } from "@/app/contexts/UILayoutContext";
 import { LoggedEvent } from "@/app/types";
 
-export interface EventsProps {
-  isExpanded: boolean;
-}
-
-function Events({ isExpanded }: EventsProps) {
+function Events() {
+  const { isEventsOpen: isExpanded } = useUILayout();
   const [prevEventLogs, setPrevEventLogs] = useState<LoggedEvent[]>([]);
   const eventLogsContainerRef = useRef<HTMLDivElement | null>(null);
   const [suppressDelta, setSuppressDelta] = useState<boolean>(() => {
@@ -50,80 +50,81 @@ function Events({ isExpanded }: EventsProps) {
     return loggedEvents.filter((log) => !/\.delta$/i.test(log.eventName));
   }, [loggedEvents, suppressDelta]);
 
+  if (!isExpanded) {
+    return null;
+  }
+
   return (
-    <div
-      className={
-        (isExpanded ? "w-full md:w-1/2 overflow-auto max-h-[400px]" : "w-0 md:w-0 overflow-hidden opacity-0") +
-        " transition-all rounded-xl duration-200 ease-in-out flex-col bg-white"
-      }
-      ref={eventLogsContainerRef}
-    >
-      {isExpanded && (
-        <div>
-          <div className="flex items-center justify-between px-6 py-3.5 sticky top-0 z-10 text-base border-b bg-white rounded-t-xl">
-            <span className="font-semibold">Logs</span>
-            <div className="flex items-center gap-4 text-xs">
-              <label className="flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" checked={suppressDelta} onChange={(e)=>setSuppressDelta(e.target.checked)} />
-                <span>Suppress .delta</span>
-              </label>
-              <label className="flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" checked={autoScroll} onChange={(e)=>setAutoScroll(e.target.checked)} />
-                <span>Auto-scroll</span>
-              </label>
-            </div>
+    <Pane className="flex-1 min-h-0" id="events-pane">
+      <Pane.Header
+        title="Logs"
+        actions={
+          <div className="flex items-center gap-3 text-xs text-gray-600">
+            <label className="flex items-center gap-1 leading-none">
+              <input
+                type="checkbox"
+                checked={suppressDelta}
+                onChange={(event) => setSuppressDelta(event.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Suppress .delta
+            </label>
+            <label className="flex items-center gap-1 leading-none">
+              <input
+                type="checkbox"
+                checked={autoScroll}
+                onChange={(event) => setAutoScroll(event.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Auto-scroll
+            </label>
           </div>
-          <div>
-            {visibleLogs.map((log, idx) => {
-              const arrowInfo = getDirectionArrow(log.direction);
-              const isError =
-                log.eventName.toLowerCase().includes("error") ||
-                log.eventData?.response?.status_details?.error != null;
+        }
+      />
+      <Pane.Body className="p-0">
+        <div ref={eventLogsContainerRef} className="max-h-[360px] overflow-auto">
+          {visibleLogs.map((log, idx) => {
+            const arrowInfo = getDirectionArrow(log.direction);
+            const isError =
+              log.eventName.toLowerCase().includes("error") ||
+              log.eventData?.response?.status_details?.error != null;
 
-              return (
+            return (
+              <div
+                key={`${log.id}-${idx}`}
+                className="border-b border-gray-200 px-4 py-3 font-mono last:border-b-0"
+              >
                 <div
-                  key={`${log.id}-${idx}`}
-                  className="border-t border-gray-200 py-2 px-6 font-mono"
+                  onClick={() => toggleExpand(log.id)}
+                  className="flex cursor-pointer items-center justify-between"
                 >
-                  <div
-                    onClick={() => toggleExpand(log.id)}
-                    className="flex items-center justify-between cursor-pointer"
-                  >
-                    <div className="flex items-center flex-1">
-                      <span
-                        style={{ color: arrowInfo.color }}
-                        className="ml-1 mr-2"
-                      >
+                  <div className="flex flex-1 items-center">
+                    <span style={{ color: arrowInfo.color }} className="mr-2 text-sm">
                       {arrowInfo.symbol}
-                      </span>
-                      <span
-                        className={
-                          "flex-1 text-sm " +
-                          (isError ? "text-red-600" : "text-gray-800")
-                        }
-                      >
-                        {log.eventName}
-                      </span>
-                    </div>
-                    <div className="text-gray-500 ml-1 text-xs whitespace-nowrap">
-                      {log.timestamp}
-                    </div>
+                    </span>
+                    <span
+                      className={cn(
+                        "flex-1 text-xs",
+                        isError ? "text-red-600" : "text-gray-800"
+                      )}
+                    >
+                      {log.eventName}
+                    </span>
                   </div>
-
-                  {log.expanded && log.eventData && (
-                    <div className="text-gray-800 text-left">
-                      <pre className="border-l-2 ml-1 border-gray-200 whitespace-pre-wrap break-words font-mono text-xs mb-2 mt-2 pl-2">
-                        {JSON.stringify(log.eventData, null, 2)}
-                      </pre>
-                    </div>
-                  )}
+                  <div className="ml-2 text-[11px] text-gray-500">{log.timestamp}</div>
                 </div>
-              );
-            })}
-          </div>
+
+                {log.expanded && log.eventData && (
+                  <div className="mt-2 text-left text-xs text-gray-800">
+                    <pre className="ml-3 border-l-2 border-gray-200 pl-3">{JSON.stringify(log.eventData, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-      )}
-    </div>
+      </Pane.Body>
+    </Pane>
   );
 }
 

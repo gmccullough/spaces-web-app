@@ -12,9 +12,24 @@ vi.mock('@supabase/ssr', () => ({
 
 const originalFetch = global.fetch;
 
+const dispatchSpy = vi.fn();
+(globalThis as any).window = { dispatchEvent: dispatchSpy } as any;
+
+if (!(globalThis as any).CustomEvent) {
+  (globalThis as any).CustomEvent = class<T = any> {
+    type: string;
+    detail: T | undefined;
+    constructor(type: string, init?: CustomEventInit<T>) {
+      this.type = type;
+      this.detail = init?.detail;
+    }
+  } as any;
+}
+
 describe('spaces client wrappers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    dispatchSpy.mockReset();
   });
 
   it('listSpaceFiles adds bearer auth and normalizes dir', async () => {
@@ -43,12 +58,11 @@ describe('spaces client wrappers', () => {
   it('writeSpaceFile strips redundant space prefix and sets headers', async () => {
     const resp = { path: 'poem.md', size: 5, contentType: 'text/markdown', etag: 'abc' };
     vi.spyOn(global, 'fetch' as any).mockResolvedValueOnce(new Response(JSON.stringify(resp), { status: 200 }));
-    const addEvt = vi.spyOn(window, 'dispatchEvent');
     const res = await writeSpaceFile('ideas', 'ideas/poem.md', 'hello', 'text/markdown');
     if ('error' in (res as any)) throw new Error('unexpected error');
     expect(res.path).toBeDefined();
-    expect(addEvt).toHaveBeenCalled();
-    const calledWith = addEvt.mock.calls.find(([evt]) => (evt as any).type === 'spaces:fileSaved');
+    expect(dispatchSpy).toHaveBeenCalled();
+    const calledWith = dispatchSpy.mock.calls.find(([evt]) => (evt as any).type === 'spaces:fileSaved');
     expect(calledWith).toBeTruthy();
   });
 
@@ -91,5 +105,3 @@ it('listSpaces items are newest to oldest when timestamps provided', async () =>
     expect((init!.headers as any).Authorization).toBe('Bearer TEST_TOKEN');
   });
 });
-
-

@@ -6,14 +6,16 @@ import { v4 as uuidv4 } from "uuid";
 import { createBrowserSupabase } from "@/app/lib/supabase/client";
 
 // UI components
-import Transcript from "./components/Transcript";
+import TranscriptPane from "./components/panes/TranscriptPane";
 import Events from "./components/Events";
 import Toolbar from "./components/Toolbar";
-import SpacesFilesPanel from "./components/SpacesFilesPanel";
-import MindMapInspector from "./components/MindMapInspector";
-import SpacePickerModal from "./components/SpacePickerModal";
+import SpacesFilesPane from "./components/panes/SpacesFilesPane";
+import MindMapInspectorPane from "./components/panes/MindMapInspectorPane";
+import SpacePickerModal from "./components/modals/SpacePickerModal";
+import { ToastProvider } from "./components/ui/ToastProvider";
 import { SpaceSelectionProvider, useSpaceSelection } from "./contexts/SpaceSelectionContext";
 import { MindMapProvider } from "./contexts/MindMapContext";
+import { UILayoutProvider, useUILayout } from "./contexts/UILayoutContext";
 
 // Types
 import { SessionStatus } from "@/app/types";
@@ -106,11 +108,10 @@ function AppInner() {
 
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
-
-  const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
-    useState<boolean>(false);
-  const [isTranscriptPaneExpanded, setIsTranscriptPaneExpanded] =
-    useState<boolean>(true);
+  const {
+    isInspectorOpen: isInspectorPaneExpanded,
+    setInspectorOpen: setIsInspectorPaneExpanded,
+  } = useUILayout();
   const [userText, setUserText] = useState<string>("");
   const [isPTTActive, setIsPTTActive] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -131,8 +132,6 @@ function AppInner() {
       return stored ? stored === 'true' : true;
     },
   );
-  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
-  const [isInspectorPaneExpanded, setIsInspectorPaneExpanded] = useState<boolean>(false);
   const [selectedVoice, setSelectedVoice] = useState<string>(() => {
     if (typeof window === 'undefined') return 'sage';
     return localStorage.getItem('voice') || 'sage';
@@ -547,41 +546,8 @@ function AppInner() {
   };
 
   useEffect(() => {
-    const storedLogsExpanded = localStorage.getItem("logsExpanded");
-    if (storedLogsExpanded !== null) {
-      setIsEventsPaneExpanded(storedLogsExpanded === "true");
-    }
-    const storedTranscriptExpanded = localStorage.getItem("transcriptExpanded");
-    if (storedTranscriptExpanded !== null) {
-      setIsTranscriptPaneExpanded(storedTranscriptExpanded === "true");
-    }
-    const storedAudioPlaybackEnabled = localStorage.getItem(
-      "audioPlaybackEnabled"
-    );
-    if (storedAudioPlaybackEnabled) {
-      setIsAudioPlaybackEnabled(storedAudioPlaybackEnabled === "true");
-    }
-    const storedInspectorExpanded = localStorage.getItem("inspectorExpanded");
-    if (storedInspectorExpanded !== null) {
-      setIsInspectorPaneExpanded(storedInspectorExpanded === "true");
-    }
-  }, []);
-
-  useEffect(() => {
     localStorage.setItem("pushToTalkUI", isPTTActive.toString());
   }, [isPTTActive]);
-
-  useEffect(() => {
-    localStorage.setItem("logsExpanded", isEventsPaneExpanded.toString());
-  }, [isEventsPaneExpanded]);
-
-  useEffect(() => {
-    localStorage.setItem("transcriptExpanded", isTranscriptPaneExpanded.toString());
-  }, [isTranscriptPaneExpanded]);
-
-  useEffect(() => {
-    localStorage.setItem("inspectorExpanded", isInspectorPaneExpanded.toString());
-  }, [isInspectorPaneExpanded]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -642,7 +608,7 @@ function AppInner() {
     <div className="text-base flex flex-col min-h-screen bg-gray-100 text-gray-800 relative">
       {/* Header removed; logo moved into Toolbar */}
 
-      <div className="px-2 pb-2">
+      <div className="pb-2">
         <Toolbar
           sessionStatus={sessionStatus}
           onToggleConnection={onToggleConnection}
@@ -651,12 +617,6 @@ function AppInner() {
           isPTTUserSpeaking={isPTTUserSpeaking}
           handleTalkButtonDown={handleTalkButtonDown}
           handleTalkButtonUp={handleTalkButtonUp}
-          isEventsPaneExpanded={isEventsPaneExpanded}
-          setIsEventsPaneExpanded={setIsEventsPaneExpanded}
-          isTranscriptPaneExpanded={isTranscriptPaneExpanded}
-          setIsTranscriptPaneExpanded={setIsTranscriptPaneExpanded}
-          isInspectorPaneExpanded={isInspectorPaneExpanded}
-          setIsInspectorPaneExpanded={setIsInspectorPaneExpanded}
           isAudioPlaybackEnabled={isAudioPlaybackEnabled}
           setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
           codec={urlCodec}
@@ -669,32 +629,30 @@ function AppInner() {
           onLogoClick={() => window.location.reload()}
           onLogout={handleLogout}
           onAnalyzeNow={analyzeNow}
-          onToggleInspector={() => setIsInspectorOpen((v)=>!v)}
         />
       </div>
 
       <div className="px-2 pb-2">
-        <SpacesFilesPanel />
+        <SpacesFilesPane />
       </div>
 
       <div className="flex flex-1 gap-2 px-2 relative flex-col md:flex-row overflow-visible md:overflow-hidden min-h-0">
-        <Transcript
+        <TranscriptPane
           userText={userText}
           setUserText={setUserText}
           onSendMessage={handleSendTextMessage}
           downloadRecording={downloadRecording}
-          isExpanded={isTranscriptPaneExpanded}
           canSend={
             sessionStatus === "CONNECTED"
           }
         />
 
-        <Events isExpanded={isEventsPaneExpanded} />
+        <Events />
       </div>
 
       {isInspectorPaneExpanded && (
-        <div className="px-2 pb-2">
-          <MindMapInspector isOpen={true} onClose={() => setIsInspectorPaneExpanded(false)} onAnalyzeNow={analyzeNow} />
+        <div className="mt-2 px-2 pb-2">
+          <MindMapInspectorPane isOpen={true} onClose={() => setIsInspectorPaneExpanded(false)} onAnalyzeNow={analyzeNow} />
         </div>
       )}
 
@@ -705,25 +663,23 @@ function AppInner() {
 
 function App() {
   return (
-    <SpaceSelectionProvider>
-      <MindMapProvider>
-        <ModalPortalWrapper />
-        <HideUIUntilSelection>
-          <AppInner />
-        </HideUIUntilSelection>
-      </MindMapProvider>
-    </SpaceSelectionProvider>
+    <ToastProvider>
+      <SpaceSelectionProvider>
+        <MindMapProvider>
+          <UILayoutProvider>
+            <ModalPortalWrapper />
+            <HideUIUntilSelection>
+              <AppInner />
+            </HideUIUntilSelection>
+          </UILayoutProvider>
+        </MindMapProvider>
+      </SpaceSelectionProvider>
+    </ToastProvider>
   );
 }
 
 function ModalPortalWrapper() {
   const { isPickerOpen, isFirstLoadBlocking, selectJustTalk, selectSpace, closePicker } = useSpaceSelection();
-
-  React.useEffect(() => {
-    const handler = () => closePicker();
-    window.addEventListener('spaces:closePicker', handler);
-    return () => window.removeEventListener('spaces:closePicker', handler);
-  }, [closePicker]);
 
   // Always render to ensure focus trap and first-load overlay
   return (
@@ -732,6 +688,7 @@ function ModalPortalWrapper() {
       isBlocking={isFirstLoadBlocking}
       onSelectJustTalk={selectJustTalk}
       onSelectSpace={selectSpace}
+      onClose={closePicker}
     />
   );
 }

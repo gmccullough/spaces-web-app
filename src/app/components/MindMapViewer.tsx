@@ -11,7 +11,7 @@ type Props = {
   fullBleed?: boolean;
 };
 
-export default function MindMapViewer({ spaceName, fullBleed = false }: Props) {
+export default function MindMapViewer({ fullBleed = false }: Props) {
   const { state } = useMindMap();
   const nodes = React.useMemo(() => Object.values(state.nodesByLabel).map(n => ({ id: n.label, label: n.label, salience: n.displaySalience ?? n.salience ?? 5 })), [state.nodesByLabel]);
   const nodeIdSet = React.useMemo(() => new Set(nodes.map(n => n.id as string)), [nodes]);
@@ -72,5 +72,3 @@ export default function MindMapViewer({ spaceName, fullBleed = false }: Props) {
     </div>
   );
 }
-
-
