@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/app/lib/supabase/server';
+import { getServiceRoleSupabase } from '@/app/lib/supabase/serviceRole';
 import { STORAGE_BUCKET, listFiles } from '@/app/lib/spaces/storage';
 import { readManifest, writeManifest } from '@/app/lib/spaces/manifest';
 import { normalizeSegment, resolveSpacePrefix } from '@/app/lib/spaces/paths';
@@ -10,8 +11,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { name: stri
   let normalizedCurrentName: string | undefined;
   let normalizedNewName: string | undefined;
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authClient = await createServerSupabase();
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, { status: 401 });
     }
@@ -47,6 +48,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { name: stri
     }
 
     // List all files (recursive) and move to new prefix
+    const storageClient = getServiceRoleSupabase() ?? authClient;
+
     const files = await listFiles(sourcePrefix, { recursive: true });
     const manifestKey = `${sourcePrefix}manifest.json`;
     let manifestExists = false;
@@ -57,10 +60,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { name: stri
         manifestExists = true;
       }
       const toPath = destinationPrefix + file.path;
-      const { error: moveError } = await supabase.storage.from(STORAGE_BUCKET).move(fromPath, toPath);
+      const { error: moveError } = await storageClient.storage.from(STORAGE_BUCKET).move(fromPath, toPath);
       if (moveError) {
+        const statusCode = (moveError as any)?.statusCode || (moveError as any)?.status;
+        if (statusCode === '404' || statusCode === 404) {
+          continue;
+        }
         console.error('[PATCH /api/spaces/[name]] move failed', { fromPath, toPath, moveError });
-        const status = (moveError as any)?.status || 500;
+        const status = statusCode || 500;
         const code = moveError.name || 'MOVE_FAILED';
         return NextResponse.json({ error: { code, message: moveError.message } }, { status });
       }
