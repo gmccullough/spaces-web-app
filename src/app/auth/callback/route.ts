@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   // Sanitize next to avoid open redirects; only allow relative paths
-  const rawNext = url.searchParams.get('next') || '/demo';
-  const next = /^\//.test(rawNext) ? rawNext : '/demo';
+  const rawNext = url.searchParams.get('next') || '/spaces';
+  const next = /^\//.test(rawNext) ? rawNext : '/spaces';
 
   // Prepare response we can attach cookies to
   // On Render, request.url may have origin https://localhost:10000 due to internal port proxy.
@@ -59,5 +59,4 @@ export async function GET(request: NextRequest) {
 
   return response;
 }
-
 

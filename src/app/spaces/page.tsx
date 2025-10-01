@@ -3,7 +3,7 @@ import { TranscriptProvider } from "@/app/contexts/TranscriptContext";
 import { EventProvider } from "@/app/contexts/EventContext";
 import App from "@/app/App";
 
-export default function DemoPage() {
+export default function SpacesPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <TranscriptProvider>
@@ -14,5 +14,4 @@ export default function DemoPage() {
     </Suspense>
   );
 }
-
 

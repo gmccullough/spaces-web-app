@@ -4,13 +4,13 @@ import { createBrowserSupabase } from "@/app/lib/supabase/client";
 
 export default function LoginPage() {
   const supabase = React.useMemo(() => createBrowserSupabase(), []);
-  const [nextPath, setNextPath] = React.useState('/demo');
+  const [nextPath, setNextPath] = React.useState('/spaces');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
   React.useEffect(() => {
-    const p = new URLSearchParams(window.location.search).get('next') || '/demo';
+    const p = new URLSearchParams(window.location.search).get('next') || '/spaces';
     setNextPath(p);
   }, []);
 
@@ -84,5 +84,4 @@ export default function LoginPage() {
     </div>
   );
 }
-
 

@@ -5,7 +5,7 @@ export async function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const pathname = url.pathname;
 
-  const needsAuth = pathname.startsWith('/demo') || pathname.startsWith('/api/session') || pathname.startsWith('/api/responses');
+  const needsAuth = pathname.startsWith('/spaces') || pathname.startsWith('/api/session') || pathname.startsWith('/api/responses');
   if (pathname.startsWith('/auth/callback')) return NextResponse.next();
   if (!needsAuth) return NextResponse.next();
 
@@ -26,7 +26,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/demo/:path*', '/api/session', '/api/responses'],
+  matcher: ['/spaces/:path*', '/api/session', '/api/responses'],
 };
-
-
