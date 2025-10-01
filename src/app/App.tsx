@@ -273,7 +273,7 @@ function AppInner() {
         const result = await getSpaceManifest(selectedSpaceName);
         if (cancelled) return;
         if ((result as any)?.manifest) {
-          setCurrentSpaceManifest(result.manifest as SpaceManifestV1);
+          setCurrentSpaceManifest((result as any).manifest as SpaceManifestV1);
         } else {
           setCurrentSpaceManifest(null);
         }
