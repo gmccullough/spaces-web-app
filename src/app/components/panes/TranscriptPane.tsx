@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { ClipboardCopyIcon, DownloadIcon, PaperPlaneIcon } from "@radix-ui/react-icons";
+import { ChevronRightIcon, ClipboardCopyIcon, DownloadIcon, PaperPlaneIcon } from "@radix-ui/react-icons";
 
 import Pane from "@/app/components/ui/Pane";
 import IconButton from "@/app/components/ui/IconButton";
@@ -10,9 +10,29 @@ import EmptyState from "@/app/components/ui/EmptyState";
 import { usePersistentState } from "@/app/lib/ui/usePersistentState";
 import { cn } from "@/app/lib/ui/cn";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
-import { useUILayout } from "@/app/contexts/UILayoutContext";
 import { TranscriptItem } from "@/app/types";
 import { GuardrailChip } from "../GuardrailChip";
+
+const WARMUP_PHRASES = [
+  "Getting the party started...",
+  "Checking the scenery...",
+  "Pondering...",
+  "Ruminating...",
+  "Spinning up the imagination...",
+  "Calibrating curiosity...",
+  "Dusting off the playbook...",
+  "Listening for inspiration...",
+  "Shuffling some bright ideas...",
+  "Tuning the antenna...",
+];
+
+function randomWarmupPhrase() {
+  if (WARMUP_PHRASES.length === 0) {
+    return "Warming things up...";
+  }
+  const index = Math.floor(Math.random() * WARMUP_PHRASES.length);
+  return WARMUP_PHRASES[index];
+}
 
 export interface TranscriptProps {
   userText: string;
@@ -20,6 +40,7 @@ export interface TranscriptProps {
   onSendMessage: () => void;
   canSend: boolean;
   downloadRecording: () => void;
+  isAgentActive: boolean;
 }
 
 export default function TranscriptPane({
@@ -28,8 +49,8 @@ export default function TranscriptPane({
   onSendMessage,
   canSend,
   downloadRecording,
+  isAgentActive,
 }: TranscriptProps) {
-  const { isTranscriptOpen } = useUILayout();
   const { transcriptItems, toggleTranscriptItemExpand } = useTranscript();
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const [prevLogs, setPrevLogs] = useState<TranscriptItem[]>([]);
@@ -39,6 +60,65 @@ export default function TranscriptPane({
     "transcriptShowSystem",
     false
   );
+  const [isExpanded, setIsExpanded] = usePersistentState<boolean>(
+    "transcriptExpanded.v2",
+    false
+  );
+  const [initialPhrase, setInitialPhrase] = useState<string | null>(null);
+
+  useEffect(() => {
+    setInitialPhrase(randomWarmupPhrase);
+  }, []);
+
+  const assistantMessages = useMemo(
+    () =>
+      transcriptItems.filter(
+        (item) =>
+          item.type === "MESSAGE" &&
+          (item as any).role === "assistant" &&
+          !item.isHidden
+      ),
+    [transcriptItems]
+  );
+
+  const inProgressAssistantMessage = useMemo(() => {
+    for (let i = assistantMessages.length - 1; i >= 0; i -= 1) {
+      const candidate = assistantMessages[i];
+      if (candidate.status !== "DONE") {
+        return candidate;
+      }
+    }
+    return undefined;
+  }, [assistantMessages]);
+
+  const displayMessage = useMemo(() => {
+    const hasReadableContent = (item?: TranscriptItem) =>
+      Boolean(item?.title && item.title.replace(/\s+/g, " ").trim().length);
+
+    if (inProgressAssistantMessage && hasReadableContent(inProgressAssistantMessage)) {
+      return inProgressAssistantMessage;
+    }
+
+    for (let i = assistantMessages.length - 1; i >= 0; i -= 1) {
+      const candidate = assistantMessages[i];
+      if (hasReadableContent(candidate)) {
+        return candidate;
+      }
+    }
+
+    return undefined;
+  }, [assistantMessages, inProgressAssistantMessage]);
+
+  const displayText = useMemo(() => {
+    if (!displayMessage?.title) return "";
+    return displayMessage.title.replace(/\s+/g, " ").trim();
+  }, [displayMessage]);
+
+  const barIsActive = isAgentActive;
+  const hasTranscriptContent = Boolean(displayText);
+  const barText = hasTranscriptContent
+    ? displayText
+    : initialPhrase ?? "Warming things up...";
 
   const visibleItems = useMemo(() => {
     if (showSystem) return transcriptItems;
@@ -61,20 +141,21 @@ export default function TranscriptPane({
       );
     });
 
-    if (hasNewMessage || hasUpdatedMessage) {
+    if (isExpanded && (hasNewMessage || hasUpdatedMessage)) {
       requestAnimationFrame(() => scrollToBottom());
     }
 
     setPrevLogs(transcriptItems);
-  }, [transcriptItems]);
+  }, [transcriptItems, isExpanded]);
 
   useEffect(() => {
-    if (canSend && inputRef.current) {
-      inputRef.current.focus();
+    if (isExpanded && canSend && inputRef.current) {
+      inputRef.current.focus({ preventScroll: true });
     }
-  }, [canSend]);
+  }, [canSend, isExpanded]);
 
   useEffect(() => {
+    if (!isExpanded) return;
     requestAnimationFrame(() => scrollToBottom());
   }, [showSystem]);
 
@@ -94,90 +175,119 @@ export default function TranscriptPane({
     }
   };
 
-  if (!isTranscriptOpen) {
-    return null;
-  }
+  const handleToggleExpanded = () => {
+    setIsExpanded((prev) => !prev);
+  };
 
   return (
-    <Pane className="flex-1 min-h-0" id="transcript-pane">
-      <Pane.Header
-        title="Transcript"
-        actions={
-          <div className="flex items-center gap-1 text-xs text-gray-600">
-            <label className="flex items-center gap-1 leading-none">
-              <input
-                type="checkbox"
-                checked={showSystem}
-                onChange={(event) => setShowSystem(event.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              Show system
-            </label>
-            <IconButton
-              ariaLabel="Copy transcript"
-              icon={<ClipboardCopyIcon className="h-3.5 w-3.5" />}
-              variant="ghost"
-              size="sm"
-              onClick={handleCopyTranscript}
-            />
-            <IconButton
-              ariaLabel="Download audio"
-              icon={<DownloadIcon className="h-3.5 w-3.5" />}
-              variant="ghost"
-              size="sm"
-              onClick={downloadRecording}
-            />
-            <span className="text-[11px] text-gray-500">
-              {justCopied ? "Copied!" : ""}
-            </span>
-          </div>
-        }
-      />
-      <Pane.Body className="p-0">
-        <div
-          ref={transcriptRef}
-          className="max-h-[360px] space-y-3 overflow-y-auto px-4 py-4 md:max-h-none"
-        >
-          {visibleItems.length === 0 ? (
-            <EmptyState
-              dense
-              title="No transcript yet"
-              description="Start a conversation to see the transcript."
-            />
-          ) : (
-            [...visibleItems]
-              .sort((a, b) => a.createdAtMs - b.createdAtMs)
-              .map((item) => <TranscriptItemRow key={item.itemId} item={item} onToggleExpand={toggleTranscriptItemExpand} />)
-          )}
-        </div>
-      </Pane.Body>
-      <Pane.Footer>
-        <div className="flex w-full items-center gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={userText}
-            onChange={(event) => setUserText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && canSend) {
-                onSendMessage();
-              }
-            }}
-            className="flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
-            placeholder="Type a message…"
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={handleToggleExpanded}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+          barIsActive
+            ? "border-blue-300 text-white shadow-sm transcript-wave"
+            : "border-blue-200 bg-blue-50 text-blue-900",
+          "transition-[background,color,border-color] duration-1000"
+        )}
+        aria-expanded={isExpanded}
+        aria-controls="transcript-pane"
+      >
+        <div className="flex flex-1 items-center gap-2 overflow-hidden">
+          <ChevronRightIcon
+            className={cn(
+              "h-4 w-4 flex-shrink-0 transition-transform",
+              isExpanded ? "rotate-90" : "rotate-0",
+              barIsActive ? "text-white" : "text-blue-500"
+            )}
           />
-          <button
-            type="button"
-            onClick={onSendMessage}
-            disabled={!canSend || !userText.trim()}
-            className={cnSendButton(canSend && userText.trim().length > 0)}
-            aria-label="Send message"
-          >
-            <PaperPlaneIcon className="h-4 w-4" />
-          </button>
+          <span className="flex-1 truncate">{barText}</span>
         </div>
-      </Pane.Footer>
-    </Pane>
+      </button>
+
+      {isExpanded ? (
+        <Pane className="flex-1 min-h-0" id="transcript-pane">
+          <Pane.Header
+            title="Conversation"
+            actions={
+              <div className="flex items-center gap-1 text-xs text-gray-600">
+                <label className="flex items-center gap-1 leading-none">
+                  <input
+                    type="checkbox"
+                    checked={showSystem}
+                    onChange={(event) => setShowSystem(event.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Show system
+                </label>
+                <IconButton
+                  ariaLabel="Copy conversation"
+                  icon={<ClipboardCopyIcon className="h-3.5 w-3.5" />}
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyTranscript}
+                />
+                <IconButton
+                  ariaLabel="Download audio"
+                  icon={<DownloadIcon className="h-3.5 w-3.5" />}
+                  variant="ghost"
+                  size="sm"
+                  onClick={downloadRecording}
+                />
+                <span className="text-[11px] text-gray-500">
+                  {justCopied ? "Copied!" : ""}
+                </span>
+              </div>
+            }
+          />
+          <Pane.Body className="p-0">
+            <div
+              ref={transcriptRef}
+              className="max-h-[360px] space-y-3 overflow-y-auto px-4 py-4 md:max-h-none"
+            >
+              {visibleItems.length === 0 ? (
+                <EmptyState
+                  dense
+                  title="No conversation yet"
+                  description="Start interacting to see the conversation."
+                />
+              ) : (
+                [...visibleItems]
+                  .sort((a, b) => a.createdAtMs - b.createdAtMs)
+                  .map((item) => <TranscriptItemRow key={item.itemId} item={item} onToggleExpand={toggleTranscriptItemExpand} />)
+              )}
+            </div>
+          </Pane.Body>
+          <Pane.Footer>
+            <div className="flex w-full items-center gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={userText}
+                onChange={(event) => setUserText(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && canSend) {
+                    onSendMessage();
+                  }
+                }}
+                className="flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                placeholder="Type a message…"
+              />
+              <button
+                type="button"
+                onClick={onSendMessage}
+                disabled={!canSend || !userText.trim()}
+                className={cnSendButton(canSend && userText.trim().length > 0)}
+                aria-label="Send message"
+              >
+                <PaperPlaneIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </Pane.Footer>
+        </Pane>
+      ) : null}
+    </div>
   );
 }
 

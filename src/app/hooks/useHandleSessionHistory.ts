@@ -60,6 +60,37 @@ export function useHandleSessionHistory() {
     if ('result' in obj) return extractModeration(obj.result);
   };
 
+  const DONE_STATUSES = new Set([
+    'completed',
+    'complete',
+    'done',
+    'finished',
+    'succeeded',
+    'success',
+    'ready',
+  ]);
+  const IN_PROGRESS_STATUSES = new Set([
+    'in_progress',
+    'processing',
+    'generating',
+    'running',
+    'queued',
+    'pending',
+    'started',
+  ]);
+
+  const mapExternalStatusToTranscriptStatus = (status: string | undefined | null) => {
+    if (!status) return undefined;
+    const normalized = String(status).toLowerCase();
+    if (DONE_STATUSES.has(normalized)) {
+      return 'DONE' as const;
+    }
+    if (IN_PROGRESS_STATUSES.has(normalized)) {
+      return 'IN_PROGRESS' as const;
+    }
+    return undefined;
+  };
+
   // Temporary helper until the guardrail_tripped event includes the itemId in the next version of the SDK
   const sketchilyDetectGuardrailMessage = (text: string) => {
     return text.match(/Failure Details: (\{.*?\})/)?.[1];
@@ -110,7 +141,17 @@ export function useHandleSessionHistory() {
           addTranscriptBreadcrumb('Output Guardrail Active', { raw: guardrailMessage });
         }
       } else {
-        addTranscriptMessage(itemId, role, text);
+        const initialStatus =
+          mapExternalStatusToTranscriptStatus((item as any).status) ||
+          mapExternalStatusToTranscriptStatus((item as any)?.response?.status);
+        addTranscriptMessage(itemId, role, text, {
+          status: initialStatus,
+        });
+        const mappedStatus =
+          initialStatus || mapExternalStatusToTranscriptStatus((item as any).response?.status);
+        if (mappedStatus) {
+          updateTranscriptItem(itemId, { status: mappedStatus });
+        }
       }
     }
   }
@@ -127,6 +168,13 @@ export function useHandleSessionHistory() {
       if (text) {
         updateTranscriptMessage(itemId, text, false);
         try { logClientEvent({ type: 'oob.transcript_update', itemId, isFinal: false }); } catch {}
+      }
+
+      const mappedStatus =
+        mapExternalStatusToTranscriptStatus((item as any).status) ||
+        mapExternalStatusToTranscriptStatus((item as any)?.response?.status);
+      if (mappedStatus) {
+        updateTranscriptItem(itemId, { status: mappedStatus });
       }
     });
   }

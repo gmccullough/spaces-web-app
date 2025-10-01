@@ -46,6 +46,7 @@ import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 function AppInner() {
   const searchParams = useSearchParams()!;
   const supabase = React.useMemo(() => createBrowserSupabase(), []);
+  const [isWaveActive, setIsWaveActive] = useState(true);
 
   // ---------------------------------------------------------------------
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
@@ -104,10 +105,17 @@ function AppInner() {
       handoffTriggeredRef.current = true;
       setSelectedAgentName(agentName);
     },
+    onSpeechStarted: () => {
+      setIsWaveActive(true);
+    },
+    onSpeechEnded: () => {
+      setIsWaveActive(false);
+    },
   });
 
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
+  const transcriptActive = isWaveActive;
   const {
     isInspectorOpen: isInspectorPaneExpanded,
     setInspectorOpen: setIsInspectorPaneExpanded,
@@ -365,11 +373,12 @@ function AppInner() {
     } catch {}
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
+    setIsWaveActive(false);
   };
 
   const sendSimulatedUserMessage = (text: string) => {
     const id = uuidv4().slice(0, 32);
-    addTranscriptMessage(id, "user", text, true);
+    addTranscriptMessage(id, "user", text, { isHidden: true });
 
     sendClientEvent({
       type: 'conversation.item.create',
@@ -631,21 +640,19 @@ function AppInner() {
         />
       </div>
 
-      <div className="px-2 pb-2">
-        <SpacesFilesPane />
-      </div>
-
-      <div className="flex flex-1 gap-2 px-2 relative flex-col md:flex-row overflow-visible md:overflow-hidden min-h-0">
+      <div className="px-2 pb-2 space-y-2">
         <TranscriptPane
           userText={userText}
           setUserText={setUserText}
           onSendMessage={handleSendTextMessage}
           downloadRecording={downloadRecording}
-          canSend={
-            sessionStatus === "CONNECTED"
-          }
+          canSend={sessionStatus === "CONNECTED"}
+          isAgentActive={transcriptActive}
         />
+        <SpacesFilesPane />
+      </div>
 
+      <div className="flex flex-1 gap-2 px-2 relative flex-col md:flex-row overflow-visible md:overflow-hidden min-h-0">
         <Events />
       </div>
 

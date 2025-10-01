@@ -5,9 +5,6 @@ import React from "react";
 import { usePersistentState } from "@/app/lib/ui/usePersistentState";
 
 type UILayoutContextValue = {
-  isTranscriptOpen: boolean;
-  setTranscriptOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  toggleTranscript: () => void;
   isEventsOpen: boolean;
   setEventsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   toggleEvents: () => void;
@@ -19,10 +16,6 @@ type UILayoutContextValue = {
 const UILayoutContext = React.createContext<UILayoutContextValue | undefined>(undefined);
 
 export function UILayoutProvider({ children }: { children: React.ReactNode }) {
-  const [isTranscriptOpen, setTranscriptOpenState] = usePersistentState<boolean>(
-    "transcriptExpanded",
-    true
-  );
   const [isEventsOpen, setEventsOpenState] = usePersistentState<boolean>(
     "logsExpanded",
     false
@@ -34,9 +27,6 @@ export function UILayoutProvider({ children }: { children: React.ReactNode }) {
 
   const value = React.useMemo<UILayoutContextValue>(
     () => ({
-      isTranscriptOpen,
-      setTranscriptOpen: setTranscriptOpenState,
-      toggleTranscript: () => setTranscriptOpenState((prev) => !prev),
       isEventsOpen,
       setEventsOpen: setEventsOpenState,
       toggleEvents: () => setEventsOpenState((prev) => !prev),
@@ -44,7 +34,7 @@ export function UILayoutProvider({ children }: { children: React.ReactNode }) {
       setInspectorOpen: setInspectorOpenState,
       toggleInspector: () => setInspectorOpenState((prev) => !prev),
     }),
-    [isTranscriptOpen, isEventsOpen, isInspectorOpen, setTranscriptOpenState, setEventsOpenState, setInspectorOpenState]
+    [isEventsOpen, isInspectorOpen, setEventsOpenState, setInspectorOpenState]
   );
 
   return <UILayoutContext.Provider value={value}>{children}</UILayoutContext.Provider>;

@@ -16,7 +16,10 @@ type TranscriptContextValue = {
     itemId: string,
     role: "user" | "assistant",
     text: string,
-    isHidden?: boolean,
+    options?: {
+      isHidden?: boolean;
+      status?: "IN_PROGRESS" | "DONE";
+    }
   ) => void;
   updateTranscriptMessage: (itemId: string, text: string, isDelta: boolean) => void;
   addTranscriptBreadcrumb: (title: string, data?: Record<string, any>) => void;
@@ -41,7 +44,12 @@ export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
     return `${time}.${ms}`;
   }
 
-  const addTranscriptMessage: TranscriptContextValue["addTranscriptMessage"] = (itemId, role, text = "", isHidden = false) => {
+  const addTranscriptMessage: TranscriptContextValue["addTranscriptMessage"] = (
+    itemId,
+    role,
+    text = "",
+    options
+  ) => {
     setTranscriptItems((prev) => {
       if (prev.some((log) => log.itemId === itemId && log.type === "MESSAGE")) {
         console.warn(`[addTranscriptMessage] skipping; message already exists for itemId=${itemId}, role=${role}, text=${text}`);
@@ -56,8 +64,8 @@ export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
         expanded: false,
         timestamp: newTimestampPretty(),
         createdAtMs: Date.now(),
-        status: "IN_PROGRESS",
-        isHidden,
+        status: options?.status ?? "IN_PROGRESS",
+        isHidden: options?.isHidden ?? false,
       };
 
       return [...prev, newItem];

@@ -18,6 +18,8 @@ export interface RealtimeSessionCallbacks {
   onResponseOutputTextDelta?: (payload: any) => void;
   onResponseDone?: (payload: any) => void;
   onResponseError?: (payload: any) => void;
+  onSpeechStarted?: () => void;
+  onSpeechEnded?: () => void;
 }
 
 export interface ConnectOptions {
@@ -62,6 +64,17 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       }
       case "response.audio_transcript.delta": {
         historyHandlers.handleTranscriptionDelta(event);
+        break;
+      }
+      case "input_audio_buffer.speech_started": {
+        callbacks.onSpeechStarted?.();
+        break;
+      }
+      case "response.audio.done": {
+        break;
+      }
+      case "output_audio_buffer.stopped": {
+        callbacks.onSpeechEnded?.();
         break;
       }
       default: {

@@ -42,7 +42,9 @@ export function MindMapProvider({ children }: { children: React.ReactNode }) {
       askedRef.current = true;
       try {
         const id = Math.random().toString(36).slice(2);
-        addTranscriptMessage(id, 'assistant', 'I captured several new ideas. Would you like to save these ideas to the Mind Map snapshot?', false);
+        addTranscriptMessage(id, 'assistant', 'I captured several new ideas. Would you like to save these ideas to the Mind Map snapshot?', {
+          status: 'DONE',
+        });
       } catch {}
     }
   }, [value.diffCount, selectedSpaceName, addTranscriptMessage]);
@@ -80,5 +82,4 @@ export function useMindMap() {
   if (!ctx) throw new Error("useMindMap must be used within a MindMapProvider");
   return ctx;
 }
-
 

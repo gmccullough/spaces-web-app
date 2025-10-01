@@ -27,8 +27,6 @@ type SettingsModalProps = {
   setIsAudioPlaybackEnabled: (enabled: boolean) => void;
   isEventsPaneExpanded: boolean;
   setIsEventsPaneExpanded: React.Dispatch<React.SetStateAction<boolean>>;
-  isTranscriptPaneExpanded?: boolean;
-  setIsTranscriptPaneExpanded?: React.Dispatch<React.SetStateAction<boolean>>;
   isInspectorPaneExpanded?: boolean;
   setIsInspectorPaneExpanded?: React.Dispatch<React.SetStateAction<boolean>>;
 };
@@ -50,8 +48,6 @@ export default function SettingsModal({
   setIsAudioPlaybackEnabled,
   isEventsPaneExpanded,
   setIsEventsPaneExpanded,
-  isTranscriptPaneExpanded,
-  setIsTranscriptPaneExpanded,
   isInspectorPaneExpanded,
   setIsInspectorPaneExpanded,
 }: SettingsModalProps) {
@@ -130,13 +126,6 @@ export default function SettingsModal({
           </Section>
 
           <Section title="Workspace">
-            <ToggleField
-              id="settings-transcript"
-              label="Transcript"
-              checked={!!isTranscriptPaneExpanded}
-              onChange={(event) => setIsTranscriptPaneExpanded?.(event.target.checked)}
-              caption="Show transcript pane"
-            />
             <ToggleField
               id="settings-events"
               label="Logs"

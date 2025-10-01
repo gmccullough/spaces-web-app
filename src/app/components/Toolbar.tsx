@@ -71,8 +71,6 @@ function Toolbar({
   onLogout,
 }: ToolbarProps) {
   const {
-    isTranscriptOpen,
-    setTranscriptOpen,
     isEventsOpen,
     setEventsOpen,
     isInspectorOpen,
@@ -166,8 +164,6 @@ function Toolbar({
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
         isEventsPaneExpanded={isEventsOpen}
         setIsEventsPaneExpanded={setEventsOpen}
-        isTranscriptPaneExpanded={isTranscriptOpen}
-        setIsTranscriptPaneExpanded={setTranscriptOpen}
         isInspectorPaneExpanded={isInspectorOpen}
         setIsInspectorPaneExpanded={setInspectorOpen}
       />
