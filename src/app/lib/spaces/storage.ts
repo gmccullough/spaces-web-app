@@ -1,7 +1,6 @@
 import { createServerSupabase } from "@/app/lib/supabase/server";
 import { FileEntry, PutOptions, WriteFileResponse } from "./types";
 import { normalizeRelativePath, resolveSpacePrefix, getMindMapRelativePath } from "./paths";
-import type { MindMapState } from "@/app/hooks/useSpacesMindMap";
 
 export const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "spaces";
 const DEFAULT_MAX_BYTES = Number(process.env.SUPABASE_MAX_OBJECT_BYTES || 5 * 1024 * 1024);
