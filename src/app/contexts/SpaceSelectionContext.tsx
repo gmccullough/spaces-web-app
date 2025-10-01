@@ -8,7 +8,6 @@ type SpaceSelectionContextValue = {
   isFirstLoadBlocking: boolean;
   openPicker: () => void;
   closePicker: () => void;
-  selectJustTalk: () => void;
   selectSpace: (name: string) => void;
 };
 
@@ -26,12 +25,6 @@ export function SpaceSelectionProvider({ children }: { children: React.ReactNode
   const closePicker = React.useCallback(() => {
     if (!isFirstLoadBlocking) setIsPickerOpen(false);
   }, [isFirstLoadBlocking]);
-
-  const selectJustTalk = React.useCallback(() => {
-    setSelectedSpaceName(null);
-    setHasMadeInitialSelection(true);
-    setIsPickerOpen(false);
-  }, []);
 
   const selectSpace = React.useCallback((name: string) => {
     const trimmed = (name || "").slice(0, 200);
@@ -62,6 +55,29 @@ export function SpaceSelectionProvider({ children }: { children: React.ReactNode
     };
   }, [hasMadeInitialSelection, isPickerOpen, selectSpace]);
 
+  React.useEffect(() => {
+    const onRenamed = (ev: Event) => {
+      try {
+        const ce = ev as CustomEvent<{ oldName?: string; newName?: string }>;
+        const next = (ce?.detail?.newName || '').slice(0, 200);
+        const prev = (ce?.detail?.oldName || '').slice(0, 200);
+        if (!next) return;
+        if (selectedSpaceName && prev && selectedSpaceName === prev) {
+          setSelectedSpaceName(next);
+          setHasMadeInitialSelection(true);
+        }
+      } catch {}
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('spaces:spaceRenamed', onRenamed as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('spaces:spaceRenamed', onRenamed as EventListener);
+      }
+    };
+  }, [selectedSpaceName]);
+
   const value: SpaceSelectionContextValue = React.useMemo(
     () => ({
       selectedSpaceName,
@@ -70,10 +86,9 @@ export function SpaceSelectionProvider({ children }: { children: React.ReactNode
       isFirstLoadBlocking,
       openPicker,
       closePicker,
-      selectJustTalk,
       selectSpace,
     }),
-    [selectedSpaceName, hasMadeInitialSelection, isPickerOpen, isFirstLoadBlocking, openPicker, closePicker, selectJustTalk, selectSpace]
+    [selectedSpaceName, hasMadeInitialSelection, isPickerOpen, isFirstLoadBlocking, openPicker, closePicker, selectSpace]
   );
 
   return (
@@ -86,5 +101,3 @@ export function useSpaceSelection() {
   if (!ctx) throw new Error("useSpaceSelection must be used within SpaceSelectionProvider");
   return ctx;
 }
-
-

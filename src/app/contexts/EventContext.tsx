@@ -12,6 +12,7 @@ type EventContextValue = {
   toggleExpand: (id: number | string) => void;
   emitFileSaved: (e: FileSavedEvent) => void;
   onFileSaved: (handler: (e: FileSavedEvent) => void) => () => void;
+  clearLoggedEvents: () => void;
 };
 
 const EventContext = createContext<EventContextValue | undefined>(undefined);
@@ -99,10 +100,14 @@ export const EventProvider: FC<PropsWithChildren> = ({ children }) => {
     };
   };
 
+  const clearLoggedEvents: EventContextValue['clearLoggedEvents'] = () => {
+    setLoggedEvents([]);
+  };
+
 
   return (
     <EventContext.Provider
-      value={{ loggedEvents, logClientEvent, logServerEvent, logHistoryItem, toggleExpand, emitFileSaved, onFileSaved }}
+      value={{ loggedEvents, logClientEvent, logServerEvent, logHistoryItem, toggleExpand, emitFileSaved, onFileSaved, clearLoggedEvents }}
     >
       {children}
     </EventContext.Provider>

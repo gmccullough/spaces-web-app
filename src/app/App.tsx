@@ -29,6 +29,9 @@ import { useRealtimeSession } from "./hooks/useRealtimeSession";
 // mind map state is provided via context; no direct import needed here
 import { useMindMapOOB } from "./hooks/useMindMapOOB";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
+import { useMindMap } from "@/app/contexts/MindMapContext";
+import { getSpaceManifest } from "@/app/lib/spaces/client";
+import type { SpaceManifestV1 } from "@/app/lib/spaces/manifest";
 
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
@@ -63,8 +66,13 @@ function AppInner() {
   // Agents SDK doesn't currently support codec selection so it is now forced 
   // via global codecPatch at module load 
 
-  const { addTranscriptMessage, addTranscriptBreadcrumb } = useTranscript();
-  const { logClientEvent, logServerEvent } = useEvent();
+  const { addTranscriptMessage, addTranscriptBreadcrumb, clearTranscript } = useTranscript();
+  const { logClientEvent, logServerEvent, clearLoggedEvents } = useEvent();
+  const { hydrateFromSnapshot } = useMindMap();
+  const [currentSpaceManifest, setCurrentSpaceManifest] = useState<SpaceManifestV1 | null>(null);
+  const pendingRenamePromptRef = useRef<string | null>(null);
+  const skipNextSpaceResetRef = useRef<string | null>(null);
+  const previousSpaceRef = useRef<string | null | undefined>(undefined);
 
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
@@ -230,10 +238,73 @@ function AppInner() {
   const { hasMadeInitialSelection, selectedSpaceName } = useSpaceSelection();
 
   useEffect(() => {
-    if (selectedAgentName && sessionStatus === "DISCONNECTED" && hasMadeInitialSelection) {
-      connectToRealtime();
+    const handler = (ev: Event) => {
+      try {
+        const ce = ev as CustomEvent<{ oldName?: string; newName?: string; manifest?: SpaceManifestV1 }>;
+        const newName = ce?.detail?.newName?.slice(0, 200);
+        if (newName) {
+          skipNextSpaceResetRef.current = newName;
+          if (ce?.detail?.manifest) {
+            setCurrentSpaceManifest(ce.detail.manifest as SpaceManifestV1);
+          }
+          pendingRenamePromptRef.current = null;
+        }
+      } catch {}
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('spaces:spaceRenamed', handler as EventListener);
     }
-  }, [selectedAgentName, hasMadeInitialSelection]);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('spaces:spaceRenamed', handler as EventListener);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasMadeInitialSelection) return;
+    if (!selectedSpaceName) {
+      setCurrentSpaceManifest(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getSpaceManifest(selectedSpaceName);
+        if (cancelled) return;
+        if ((result as any)?.manifest) {
+          setCurrentSpaceManifest(result.manifest as SpaceManifestV1);
+        } else {
+          setCurrentSpaceManifest(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setCurrentSpaceManifest(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasMadeInitialSelection, selectedSpaceName]);
+
+  useEffect(() => {
+    if (!selectedSpaceName) {
+      pendingRenamePromptRef.current = null;
+      return;
+    }
+    if (currentSpaceManifest?.is_name_auto_generated) {
+      pendingRenamePromptRef.current = selectedSpaceName;
+    } else if (pendingRenamePromptRef.current === selectedSpaceName) {
+      pendingRenamePromptRef.current = null;
+    }
+  }, [currentSpaceManifest, selectedSpaceName]);
+
+  useEffect(() => {
+    if (!selectedAgentName || !hasMadeInitialSelection) return;
+    if (sessionStatus !== "DISCONNECTED") return;
+    connectToRealtime();
+  }, [selectedAgentName, hasMadeInitialSelection, sessionStatus, selectedSpaceName]);
 
   useEffect(() => {
     if (
@@ -376,6 +447,23 @@ function AppInner() {
     setIsWaveActive(false);
   };
 
+  const resetForSpaceChange = React.useCallback((nextSpaceName: string | null) => {
+    clearTranscript();
+    clearLoggedEvents();
+    setCurrentSpaceManifest(null);
+    setUserText('');
+    setIsPTTUserSpeaking(false);
+    pendingRenamePromptRef.current = nextSpaceName;
+    try { hydrateFromSnapshot(null); } catch {}
+    try { stopRecording(); } catch {}
+    if (sessionStatus !== 'DISCONNECTED') {
+      disconnectFromRealtime();
+    }
+    handoffTriggeredRef.current = false;
+    reconnectOnVoiceChangeRef.current = false;
+    setIsWaveActive(true);
+  }, [clearTranscript, clearLoggedEvents, disconnectFromRealtime, hydrateFromSnapshot, sessionStatus, stopRecording]);
+
   const sendSimulatedUserMessage = (text: string) => {
     const id = uuidv4().slice(0, 32);
     addTranscriptMessage(id, "user", text, { isHidden: true });
@@ -475,6 +563,29 @@ function AppInner() {
     }
   }, [selectedSpaceName]);
 
+  useEffect(() => {
+    if (!hasMadeInitialSelection) return;
+    if (previousSpaceRef.current === selectedSpaceName) return;
+
+    if (skipNextSpaceResetRef.current && skipNextSpaceResetRef.current === selectedSpaceName) {
+      skipNextSpaceResetRef.current = null;
+      previousSpaceRef.current = selectedSpaceName;
+      return;
+    }
+
+    resetForSpaceChange(selectedSpaceName);
+    previousSpaceRef.current = selectedSpaceName;
+  }, [hasMadeInitialSelection, selectedSpaceName, resetForSpaceChange]);
+
+  useEffect(() => {
+    if (sessionStatus !== 'CONNECTED') return;
+    if (!selectedSpaceName) return;
+    if (pendingRenamePromptRef.current !== selectedSpaceName) return;
+
+    sendSimulatedUserMessage(`The current Space "${selectedSpaceName}" was auto-named when it was created. Please ask the user if they'd like to rename it. If they share a new name, call the rename_space tool to update it.`);
+    pendingRenamePromptRef.current = null;
+  }, [selectedSpaceName, sessionStatus]);
+
   const handleSendTextMessage = () => {
     if (!userText.trim()) return;
     interrupt();
@@ -535,6 +646,15 @@ function AppInner() {
       connectToRealtime();
     }
   };
+
+  useEffect(() => {
+    if (sessionStatus !== 'CONNECTED') return;
+    if (!selectedSpaceName) return;
+    if (pendingRenamePromptRef.current !== selectedSpaceName) return;
+
+    sendSimulatedUserMessage(`The current Space "${selectedSpaceName}" was auto-named when it was created. Please ask the user if they'd like to rename it. If they share a new name, call the rename_space tool to update it.`);
+    pendingRenamePromptRef.current = null;
+  }, [selectedSpaceName, sessionStatus]);
 
   
 
@@ -685,14 +805,13 @@ function App() {
 }
 
 function ModalPortalWrapper() {
-  const { isPickerOpen, isFirstLoadBlocking, selectJustTalk, selectSpace, closePicker } = useSpaceSelection();
+  const { isPickerOpen, isFirstLoadBlocking, selectSpace, closePicker } = useSpaceSelection();
 
   // Always render to ensure focus trap and first-load overlay
   return (
     <SpacePickerModal
       isOpen={isPickerOpen}
       isBlocking={isFirstLoadBlocking}
-      onSelectJustTalk={selectJustTalk}
       onSelectSpace={selectSpace}
       onClose={closePicker}
     />
