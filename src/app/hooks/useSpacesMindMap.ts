@@ -9,6 +9,8 @@ export type MindMapNode = {
   summary?: string;
   keywords?: string[];
   salience?: number; // 1-10
+  // Derived visual salience normalized across current nodes (1-10)
+  displaySalience?: number;
 };
 
 export type MindMapEdge = {
@@ -35,7 +37,7 @@ export function useSpacesMindMap() {
     try {
       if (!validateDiff(diff)) return;
     } catch {}
-    setState((prev) => applyOps(prev, diff.ops, edgeKeySetRef.current));
+    setState((prev) => normalizeSalience(applyOps(prev, diff.ops, edgeKeySetRef.current)));
     setDiffCount((c) => c + 1);
   }, []);
 
@@ -56,7 +58,7 @@ export function useSpacesMindMap() {
         }
       }
     }
-    setState(next);
+    setState(normalizeSalience(next));
     setDiffCount(0);
     setLastSavedAt(new Date().toISOString());
   }, []);
@@ -140,6 +142,21 @@ function validateDiff(diff: MindMapDiff): boolean {
   } catch {
     return false;
   }
+}
+
+function normalizeSalience(state: MindMapState): MindMapState {
+  const values: number[] = Object.values(state.nodesByLabel).map(n => typeof n.salience === 'number' ? n.salience! : 5);
+  if (values.length === 0) return state;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = Math.max(1, max - min);
+  const nextNodesByLabel: Record<string, MindMapNode> = {};
+  for (const [label, n] of Object.entries(state.nodesByLabel)) {
+    const raw = typeof n.salience === 'number' ? n.salience! : 5;
+    const normalized = 1 + Math.round(((raw - min) / range) * 9);
+    nextNodesByLabel[label] = { ...n, displaySalience: normalized };
+  }
+  return { ...state, nodesByLabel: nextNodesByLabel };
 }
 
 

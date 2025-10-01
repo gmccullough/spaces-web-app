@@ -4,6 +4,7 @@ import React, { createContext, useContext } from "react";
 import { useSpacesMindMap } from "@/app/hooks/useSpacesMindMap";
 import { useSpaceSelection } from "@/app/contexts/SpaceSelectionContext";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
+import { buildMindMapSnapshot } from "@/app/lib/spaces/types";
 
 type MindMapContextValue = ReturnType<typeof useSpacesMindMap>;
 
@@ -52,32 +53,14 @@ export function MindMapProvider({ children }: { children: React.ReactNode }) {
     if (!selectedSpaceName) return;
     saveInProgressRef.current = true;
     try {
-      const nodes = Object.values(value.state.nodesByLabel).map((n) => ({
-        id: `n_${encodeURIComponent(n.label)}`,
-        label: n.label,
-        summary: n.summary,
-        keywords: n.keywords,
-        salience: n.salience,
-      }));
-      const edges = value.state.edges.map((e, idx) => ({
-        id: `e_${encodeURIComponent(e.sourceLabel)}_${encodeURIComponent(e.targetLabel)}_${encodeURIComponent(e.relation || '')}_${idx}`,
-        sourceId: `n_${encodeURIComponent(e.sourceLabel)}`,
-        targetId: `n_${encodeURIComponent(e.targetLabel)}`,
-        relation: e.relation,
-        confidence: e.confidence,
-      }));
-      const snapshot = {
-        schema_version: '1',
-        space_name: selectedSpaceName,
-        updated_at: new Date().toISOString(),
-        nodes,
-        edges,
-      };
+      const snapshot = buildMindMapSnapshot(selectedSpaceName, { nodesByLabel: value.state.nodesByLabel, edges: value.state.edges });
       await fetch(`/api/spaces/${encodeURIComponent(selectedSpaceName)}/mindmap`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ snapshot }),
       });
+      // refresh local state markers
+      value.hydrateFromSnapshot({ nodes: snapshot.nodes.map(n => ({ label: n.label, summary: n.summary, keywords: n.keywords, salience: n.salience })), edges: snapshot.edges.map(e => ({ sourceLabel: decodeURIComponent(e.sourceId.replace(/^n_/, '')), targetLabel: decodeURIComponent(e.targetId.replace(/^n_/, '')), relation: e.relation, confidence: e.confidence })) });
     } catch {}
     finally {
       saveInProgressRef.current = false;

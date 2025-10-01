@@ -39,7 +39,10 @@ export function useMindMapOOB(options: UseMindMapOOBOptions) {
         .map((i) => `${i.role}: ${i.title}`)
         .join('\n');
 
-      const instructions = `You are a concept extractor. Return ONLY a JSON object with an "ops" array; no prose, no audio. Each op is an OBJECT with a "type" field where type ∈ {add_node, update_node, add_edge, remove_edge}.\n\nFor type=add_node or update_node, include: {"type": "add_node|update_node", "label": string, "summary"?: string, "keywords"?: string[], "salience"?: number 1-10}.\nFor type=add_edge, include: {"type": "add_edge", "sourceLabel": string, "targetLabel": string, "relation"?: string, "confidence"?: number 0-1}.\nFor type=remove_edge, include: {"type": "remove_edge", "sourceLabel": string, "targetLabel": string, "relation"?: string}.\n\nAnalyze the conversation (most recent last) and produce minimal diffs strictly in this flat format. Conversation follows:\n\n${msgs}`;
+      // Optionally include a small distilled snapshot context (labels only) to help concept matching
+      const priorLabels = Object.keys(mindMap.state.nodesByLabel).slice(0, 50);
+      const snapshotHint = priorLabels.length ? `\nExisting concepts (labels only): ${priorLabels.join(', ')}` : '';
+      const instructions = `You are a concept extractor. Return ONLY a JSON object with an "ops" array; no prose, no audio. Each op is an OBJECT with a "type" field where type ∈ {add_node, update_node, add_edge, remove_edge}.\n\nFor type=add_node or update_node, include: {"type": "add_node|update_node", "label": string, "summary"?: string, "keywords"?: string[], "salience"?: number 1-10}.\nFor type=add_edge, include: {"type": "add_edge", "sourceLabel": string, "targetLabel": string, "relation"?: string, "confidence"?: number 0-1}.\nFor type=remove_edge, include: {"type": "remove_edge", "sourceLabel": string, "targetLabel": string, "relation"?: string}.\n\nAnalyze the conversation (most recent last) and produce minimal diffs strictly in this flat format.${snapshotHint}\n\nConversation follows:\n\n${msgs}`;
       const base = buildMindMapOOBRequest({ spaceName: selectedSpaceName || undefined, instructions });
       const eventObj = {
         ...base,

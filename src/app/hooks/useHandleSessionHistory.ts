@@ -103,8 +103,12 @@ export function useHandleSessionHistory() {
       // assistant to correct it, so we add it as a breadcrumb instead of a message.
       const guardrailMessage = sketchilyDetectGuardrailMessage(text);
       if (guardrailMessage) {
-        const failureDetails = JSON.parse(guardrailMessage);
-        addTranscriptBreadcrumb('Output Guardrail Active', { details: failureDetails });
+        try {
+          const failureDetails = JSON.parse(guardrailMessage);
+          addTranscriptBreadcrumb('Output Guardrail Active', { details: failureDetails });
+        } catch {
+          addTranscriptBreadcrumb('Output Guardrail Active', { raw: guardrailMessage });
+        }
       } else {
         addTranscriptMessage(itemId, role, text);
       }

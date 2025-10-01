@@ -30,6 +30,7 @@ export const MINDMAP_DIFF_SCHEMA_NAME = "mindmap_diff_v1" as const;
 export const MINDMAP_DEBOUNCE_MS = 800;
 export const MINDMAP_INFLIGHT_TIMEOUT_MS = 6000;
 export const MINDMAP_MAX_CONTEXT_TURNS = 8;
+export const MINDMAP_SNAPSHOT_SCHEMA_VERSION = "1" as const;
 
 export type MindMapOp =
   | {
@@ -140,4 +141,54 @@ export function buildMindMapOOBRequest(params: { spaceName?: string; instruction
       metadata: { channel: SPACES_MINDMAP_CHANNEL, spaceName },
     },
   } as const;
+}
+
+// ----------------------- Mind Map Snapshot Types -------------------------
+
+export type MindMapSnapshotNode = {
+  id: string;
+  label: string;
+  summary?: string;
+  keywords?: string[];
+  salience?: number;
+};
+
+export type MindMapSnapshotEdge = {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  relation?: string;
+  confidence?: number;
+};
+
+export type MindMapSnapshot = {
+  schema_version: typeof MINDMAP_SNAPSHOT_SCHEMA_VERSION;
+  space_name: string;
+  updated_at: string; // ISO
+  nodes: MindMapSnapshotNode[];
+  edges: MindMapSnapshotEdge[];
+};
+
+export function buildMindMapSnapshot(spaceName: string, state: { nodesByLabel: Record<string, { label: string; summary?: string; keywords?: string[]; salience?: number }>; edges: Array<{ sourceLabel: string; targetLabel: string; relation?: string; confidence?: number }> }): MindMapSnapshot {
+  const nodes: MindMapSnapshotNode[] = Object.values(state.nodesByLabel).map((n) => ({
+    id: `n_${encodeURIComponent(n.label)}`,
+    label: n.label,
+    summary: n.summary,
+    keywords: n.keywords,
+    salience: n.salience,
+  }));
+  const edges: MindMapSnapshotEdge[] = state.edges.map((e, idx) => ({
+    id: `e_${encodeURIComponent(e.sourceLabel)}_${encodeURIComponent(e.targetLabel)}_${encodeURIComponent(e.relation || '')}_${idx}`,
+    sourceId: `n_${encodeURIComponent(e.sourceLabel)}`,
+    targetId: `n_${encodeURIComponent(e.targetLabel)}`,
+    relation: e.relation,
+    confidence: e.confidence,
+  }));
+  return {
+    schema_version: MINDMAP_SNAPSHOT_SCHEMA_VERSION,
+    space_name: spaceName,
+    updated_at: new Date().toISOString(),
+    nodes,
+    edges,
+  };
 }
