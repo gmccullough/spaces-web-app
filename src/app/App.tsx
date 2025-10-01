@@ -108,9 +108,15 @@ function AppInner() {
     useState<SessionStatus>("DISCONNECTED");
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
+    useState<boolean>(false);
+  const [isTranscriptPaneExpanded, setIsTranscriptPaneExpanded] =
     useState<boolean>(true);
   const [userText, setUserText] = useState<string>("");
-  const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
+  const [isPTTActive, setIsPTTActive] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const stored = localStorage.getItem('pushToTalkUI');
+    return stored === null ? true : stored === 'true';
+  });
   const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState<boolean>(false);
   const [inputDevices, setInputDevices] = useState<Array<{ deviceId: string; label: string }>>([]);
   const [selectedInputDeviceId, setSelectedInputDeviceId] = useState<string>(() => {
@@ -126,6 +132,7 @@ function AppInner() {
     },
   );
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
+  const [isInspectorPaneExpanded, setIsInspectorPaneExpanded] = useState<boolean>(false);
   const [selectedVoice, setSelectedVoice] = useState<string>(() => {
     if (typeof window === 'undefined') return 'sage';
     return localStorage.getItem('voice') || 'sage';
@@ -540,23 +547,23 @@ function AppInner() {
   };
 
   useEffect(() => {
-    const storedPushToTalkUI = localStorage.getItem("pushToTalkUI");
-    // Default to ON so the app is not listening after reloads (PTT required)
-    if (storedPushToTalkUI === null) {
-      setIsPTTActive(true);
-      localStorage.setItem("pushToTalkUI", "true");
-    } else {
-      setIsPTTActive(storedPushToTalkUI === "true");
-    }
     const storedLogsExpanded = localStorage.getItem("logsExpanded");
-    if (storedLogsExpanded) {
+    if (storedLogsExpanded !== null) {
       setIsEventsPaneExpanded(storedLogsExpanded === "true");
+    }
+    const storedTranscriptExpanded = localStorage.getItem("transcriptExpanded");
+    if (storedTranscriptExpanded !== null) {
+      setIsTranscriptPaneExpanded(storedTranscriptExpanded === "true");
     }
     const storedAudioPlaybackEnabled = localStorage.getItem(
       "audioPlaybackEnabled"
     );
     if (storedAudioPlaybackEnabled) {
       setIsAudioPlaybackEnabled(storedAudioPlaybackEnabled === "true");
+    }
+    const storedInspectorExpanded = localStorage.getItem("inspectorExpanded");
+    if (storedInspectorExpanded !== null) {
+      setIsInspectorPaneExpanded(storedInspectorExpanded === "true");
     }
   }, []);
 
@@ -567,6 +574,14 @@ function AppInner() {
   useEffect(() => {
     localStorage.setItem("logsExpanded", isEventsPaneExpanded.toString());
   }, [isEventsPaneExpanded]);
+
+  useEffect(() => {
+    localStorage.setItem("transcriptExpanded", isTranscriptPaneExpanded.toString());
+  }, [isTranscriptPaneExpanded]);
+
+  useEffect(() => {
+    localStorage.setItem("inspectorExpanded", isInspectorPaneExpanded.toString());
+  }, [isInspectorPaneExpanded]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -638,6 +653,10 @@ function AppInner() {
           handleTalkButtonUp={handleTalkButtonUp}
           isEventsPaneExpanded={isEventsPaneExpanded}
           setIsEventsPaneExpanded={setIsEventsPaneExpanded}
+          isTranscriptPaneExpanded={isTranscriptPaneExpanded}
+          setIsTranscriptPaneExpanded={setIsTranscriptPaneExpanded}
+          isInspectorPaneExpanded={isInspectorPaneExpanded}
+          setIsInspectorPaneExpanded={setIsInspectorPaneExpanded}
           isAudioPlaybackEnabled={isAudioPlaybackEnabled}
           setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
           codec={urlCodec}
@@ -664,6 +683,7 @@ function AppInner() {
           setUserText={setUserText}
           onSendMessage={handleSendTextMessage}
           downloadRecording={downloadRecording}
+          isExpanded={isTranscriptPaneExpanded}
           canSend={
             sessionStatus === "CONNECTED"
           }
@@ -672,7 +692,11 @@ function AppInner() {
         <Events isExpanded={isEventsPaneExpanded} />
       </div>
 
-      <MindMapInspector isOpen={isInspectorOpen} onClose={() => setIsInspectorOpen(false)} />
+      {isInspectorPaneExpanded && (
+        <div className="px-2 pb-2">
+          <MindMapInspector isOpen={true} onClose={() => setIsInspectorPaneExpanded(false)} onAnalyzeNow={analyzeNow} />
+        </div>
+      )}
 
       
     </div>

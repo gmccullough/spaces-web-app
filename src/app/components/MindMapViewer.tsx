@@ -8,12 +8,16 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false 
 
 type Props = {
   spaceName?: string;
+  fullBleed?: boolean;
 };
 
-export default function MindMapViewer({ spaceName }: Props) {
+export default function MindMapViewer({ spaceName, fullBleed = false }: Props) {
   const { state, saveSnapshot } = useMindMap();
   const nodes = React.useMemo(() => Object.values(state.nodesByLabel).map(n => ({ id: n.label, label: n.label, salience: n.displaySalience ?? n.salience ?? 5 })), [state.nodesByLabel]);
-  const links = React.useMemo(() => state.edges.map(e => ({ source: e.sourceLabel, target: e.targetLabel, relation: e.relation })), [state.edges]);
+  const nodeIdSet = React.useMemo(() => new Set(nodes.map(n => n.id as string)), [nodes]);
+  const links = React.useMemo(() => state.edges
+    .filter(e => nodeIdSet.has(e.sourceLabel) && nodeIdSet.has(e.targetLabel))
+    .map(e => ({ source: e.sourceLabel, target: e.targetLabel, relation: e.relation })), [state.edges, nodeIdSet]);
 
   const data = React.useMemo(() => ({ nodes, links }), [nodes, links]);
 
@@ -46,12 +50,15 @@ export default function MindMapViewer({ spaceName }: Props) {
     ctx.fillText(text, node.x, node.y);
   }, []);
 
+  const containerClass = fullBleed ? "h-full" : "p-2 h-[420px] bg-white rounded border";
+
   return (
-    <div className="p-2 h-[420px] bg-white rounded border">
+    <div className={containerClass}>
       <div className="mb-2 text-gray-700 text-sm px-1 flex items-center justify-between">
         <span>Mind Map{spaceName ? ` for ${spaceName}` : ''}</span>
         <button className="text-xs px-2 py-1 border rounded hover:bg-gray-50" onClick={() => { try { saveSnapshot(); } catch {} }}>Save Mind Map</button>
       </div>
+      {nodes.length > 0 && (
       <ForceGraph2D
         graphData={data as any}
         nodeLabel={(n: any) => n.label}
@@ -62,10 +69,10 @@ export default function MindMapViewer({ spaceName }: Props) {
         linkLabel={(l: any) => l.relation || ''}
         cooldownTicks={60}
         width={undefined}
-        height={380}
+        height={undefined}
         nodeCanvasObject={drawNode}
         nodeCanvasObjectMode={() => 'replace'}
-      />
+      />)}
     </div>
   );
 }

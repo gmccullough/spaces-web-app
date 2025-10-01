@@ -7,9 +7,10 @@ import { useSpacesFileTree } from "@/app/hooks/useSpacesFileTree";
 type Props = {
   spaceName?: string;
   onSelectPath?: (path: string) => void;
+  includeMindMapEntry?: boolean;
 };
 
-export default function SpacesFileTree({ spaceName, onSelectPath }: Props) {
+export default function SpacesFileTree({ spaceName, onSelectPath, includeMindMapEntry = true }: Props) {
   const {
     isReady,
     expandedDirs,
@@ -28,10 +29,11 @@ export default function SpacesFileTree({ spaceName, onSelectPath }: Props) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const items = React.useMemo(() => {
     const base = root.nodes || [];
+    if (!includeMindMapEntry) return base;
     const specialMindMap = { path: "__mindmap__", name: "Mind Map", isDirectory: false } as any;
     // Prepend special entry at root
     return [specialMindMap, ...base];
-  }, [root.nodes]);
+  }, [root.nodes, includeMindMapEntry]);
 
   const moveSelection = (delta: number) => {
     if (!items.length) return;
@@ -123,7 +125,7 @@ export default function SpacesFileTree({ spaceName, onSelectPath }: Props) {
       {isReady && root.error && (
         <div className="p-3 text-red-600">{root.error}</div>
       )}
-      {isReady && <TreeDir dir="" getDirState={getDirState} ensureDir={ensureDir} expandedDirs={expandedDirs} toggleExpand={toggleExpand} selectedPath={selectedPath} setSelectedPath={setSelectedPath} onSelectPath={onSelectPath} />}
+      {isReady && <TreeDir dir="" getDirState={getDirState} ensureDir={ensureDir} expandedDirs={expandedDirs} toggleExpand={toggleExpand} selectedPath={selectedPath} setSelectedPath={setSelectedPath} onSelectPath={onSelectPath} includeMindMapEntry={includeMindMapEntry} />}
     </div>
   );
 }
@@ -137,9 +139,10 @@ type TreeDirProps = {
   selectedPath: string | null;
   setSelectedPath: (p: string) => void;
   onSelectPath?: (path: string) => void;
+  includeMindMapEntry: boolean;
 };
 
-function TreeDir({ dir, getDirState, ensureDir, expandedDirs, toggleExpand, selectedPath, setSelectedPath, onSelectPath }: TreeDirProps) {
+function TreeDir({ dir, getDirState, ensureDir, expandedDirs, toggleExpand, selectedPath, setSelectedPath, onSelectPath, includeMindMapEntry }: TreeDirProps) {
   React.useEffect(() => { ensureDir(dir); }, [dir, ensureDir]);
   const state = getDirState(dir);
 
@@ -161,7 +164,7 @@ function TreeDir({ dir, getDirState, ensureDir, expandedDirs, toggleExpand, sele
               <span className="mr-1">{isOpen ? '📂' : '📁'}</span>
               {d.name}
             </div>
-            {isOpen && <TreeDir dir={key} getDirState={getDirState} ensureDir={ensureDir} expandedDirs={expandedDirs} toggleExpand={toggleExpand} selectedPath={selectedPath} setSelectedPath={setSelectedPath} onSelectPath={onSelectPath} />}
+            {isOpen && <TreeDir dir={key} getDirState={getDirState} ensureDir={ensureDir} expandedDirs={expandedDirs} toggleExpand={toggleExpand} selectedPath={selectedPath} setSelectedPath={setSelectedPath} onSelectPath={onSelectPath} includeMindMapEntry={includeMindMapEntry} />}
           </li>
         );
       })}
@@ -174,7 +177,7 @@ function TreeDir({ dir, getDirState, ensureDir, expandedDirs, toggleExpand, sele
         </li>
       ))}
       {/* Special virtual entry */}
-      {dir === "" && (
+      {includeMindMapEntry && dir === "" && (
         <li key="__mindmap__">
           <div role="treeitem" aria-selected={selectedPath === "__mindmap__"} className={`px-2 py-1 rounded cursor-pointer ${selectedPath === "__mindmap__" ? 'bg-blue-50' : ''}`} onClick={() => { setSelectedPath("__mindmap__"); onSelectPath?.("__mindmap__"); }}>
             <span className="mr-1">🧠</span>

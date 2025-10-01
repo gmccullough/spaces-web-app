@@ -1,4 +1,4 @@
-"use-client";
+"use client";
 
 import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -14,6 +14,7 @@ export interface TranscriptProps {
   onSendMessage: () => void;
   canSend: boolean;
   downloadRecording: () => void;
+  isExpanded?: boolean;
 }
 
 function Transcript({
@@ -22,6 +23,7 @@ function Transcript({
   onSendMessage,
   canSend,
   downloadRecording,
+  isExpanded = true,
 }: TranscriptProps) {
   const { transcriptItems, toggleTranscriptItemExpand } = useTranscript();
   const transcriptRef = useRef<HTMLDivElement | null>(null);
@@ -70,8 +72,12 @@ function Transcript({
     }
   };
 
+  const containerClass = isExpanded
+    ? "flex flex-col flex-1 bg-white min-h-[50vh] md:min-h-0 rounded-xl max-h-[400px] overflow-hidden"
+    : "w-0 md:w-0 overflow-hidden opacity-0";
+
   return (
-    <div className="flex flex-col flex-1 bg-white min-h-[50vh] md:min-h-0 rounded-xl max-h-[400px] overflow-hidden">
+    <div className={containerClass}>
       <div className="flex flex-col flex-1 min-h-0">
         <div className="flex items-center justify-between px-6 py-3 sticky top-0 z-10 text-base border-b bg-white rounded-t-xl">
           <span className="font-semibold">Transcript</span>

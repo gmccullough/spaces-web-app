@@ -3,6 +3,7 @@
 import React from "react";
 import SpacesFileTree from "./SpacesFileTree";
 import SpacesFileViewer from "./SpacesFileViewer";
+import MindMapViewer from "./MindMapViewer";
 import { createBrowserSupabase } from "@/app/lib/supabase/client";
 import { FileSavedEvent } from "@/app/contexts/EventContext";
 import { useSpaceSelection } from "../contexts/SpaceSelectionContext";
@@ -17,6 +18,7 @@ export default function SpacesFilesPanel({ children }: SpacesFilesPanelProps) {
   const spaceName = selectedSpaceName || undefined;
   const [selectedPath, setSelectedPath] = React.useState<string | null>(null);
   const [toasts, setToasts] = React.useState<Array<{ id: number; text: string; action?: { label: string; onClick: () => void } }>>([]);
+  const [viewMode, setViewMode] = React.useState<"files" | "mindmap">("files");
 
   React.useEffect(() => {
     let cancelled = false;
@@ -28,6 +30,13 @@ export default function SpacesFilesPanel({ children }: SpacesFilesPanelProps) {
     ensureAuth();
     return () => { cancelled = true; };
   }, [supabase]);
+
+  // Ensure we don't show the virtual mindmap preview when switching to files mode
+  React.useEffect(() => {
+    if (viewMode === 'files' && selectedPath === "__mindmap__") {
+      setSelectedPath(null);
+    }
+  }, [viewMode, selectedPath]);
 
   // Bring newly saved file into preview if not focused (space-scoped)
   React.useEffect(() => {
@@ -60,21 +69,44 @@ export default function SpacesFilesPanel({ children }: SpacesFilesPanelProps) {
   }, [spaceName, selectedPath]);
   return (
     <div className="flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-6 py-3 border-b bg-white sticky top-0 z-10 flex items-center justify-start">
+      <div className="px-6 py-3 border-b bg-white sticky top-0 z-10 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <button className="text-gray-900 font-semibold hover:underline" onClick={openPicker}>Spaces</button>
           <span className="text-gray-400">&gt;</span>
           <span className="truncate" title={spaceName || 'Just talk'}>{spaceName || 'Just talk'}</span>
         </div>
-      </div>
-      <div className="flex flex-col md:flex-row min-h-[240px] md:max-h-[40vh] md:h-[40vh]">
-        <div className="w-full md:w-1/3 md:border-r border-b md:border-b-0 overflow-auto">
-          <SpacesFileTree spaceName={spaceName} onSelectPath={setSelectedPath} />
+        <div className="flex items-center">
+          <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
+            <button
+              className={(viewMode === 'mindmap' ? "bg-gray-800 text-white" : "bg-white text-gray-700") + " px-3 py-1 flex items-center"}
+              onClick={() => setViewMode('mindmap')}
+            >
+              Mind map
+            </button>
+            <button
+              className={(viewMode === 'files' ? "bg-gray-800 text-white" : "bg-white text-gray-700") + " px-3 py-1 flex items-center"}
+              onClick={() => setViewMode('files')}
+            >
+              Files
+            </button>
+          </div>
         </div>
-        <div className={`w-full md:w-2/3 overflow-auto ${selectedPath ? 'bg-blue-50' : ''}`}>
-          <SpacesFileViewer spaceName={spaceName} path={selectedPath} />
-        </div>
       </div>
+      {viewMode === 'files' && (
+        <div className="flex flex-col md:flex-row min-h-[600px] md:max-h-[70vh] md:h-[70vh]">
+          <div className="w-full md:w-1/3 md:border-r border-b md:border-b-0 overflow-auto">
+            <SpacesFileTree spaceName={spaceName} onSelectPath={setSelectedPath} includeMindMapEntry={false} />
+          </div>
+          <div className={`w-full md:w-2/3 overflow-auto ${selectedPath ? 'bg-blue-50' : ''}`}>
+            <SpacesFileViewer spaceName={spaceName} path={selectedPath} />
+          </div>
+        </div>
+      )}
+      {viewMode === 'mindmap' && (
+        <div className="min-h-[600px] md:max-h-[70vh] md:h-[70vh] overflow-hidden">
+          <MindMapViewer spaceName={spaceName} fullBleed />
+        </div>
+      )}
       {children}
       {/* Toasts */}
       {toasts.length > 0 && (

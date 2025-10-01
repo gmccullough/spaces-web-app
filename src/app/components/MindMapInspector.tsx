@@ -6,13 +6,14 @@ import { useEvent } from "@/app/contexts/EventContext";
 type MindMapInspectorProps = {
   isOpen: boolean;
   onClose: () => void;
+  onAnalyzeNow?: () => void;
 };
 
 function pretty(obj: any) {
   try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
 }
 
-export default function MindMapInspector({ isOpen, onClose }: MindMapInspectorProps) {
+export default function MindMapInspector({ isOpen, onClose, onAnalyzeNow }: MindMapInspectorProps) {
   const { loggedEvents } = useEvent();
   const [activeTab, setActiveTab] = React.useState<'context'|'diff'|'json'>('context');
   const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
@@ -106,14 +107,18 @@ export default function MindMapInspector({ isOpen, onClose }: MindMapInspectorPr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-md shadow-xl w-[90vw] h-[80vh] p-3 flex flex-col">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-lg font-medium">Mind Map Inspector</div>
-          <button onClick={onClose} className="px-2 py-1 border rounded-md">Close</button>
+    <div className="w-full border-t bg-white">
+      <div className="px-4 py-2 border-b flex items-center justify-between">
+        <div className="text-base font-medium">Concept Inspector</div>
+        <div className="flex items-center gap-2">
+          <button onClick={onAnalyzeNow} className="text-sm rounded-md border border-gray-300 px-3 py-1 hover:bg-gray-50">
+            Analyze now
+          </button>
+          <button onClick={onClose} className="text-sm rounded-md border border-gray-300 px-3 py-1 hover:bg-gray-50">Close</button>
         </div>
+      </div>
 
-        <div className="flex gap-3 flex-1 min-h-0">
+      <div className="flex gap-3 h-[30vh] min-h-[240px] p-3">
           {/* Feed list */}
           <div className="w-64 border rounded-md overflow-hidden flex flex-col">
             <div className="px-2 py-1 border-b text-sm flex items-center justify-between">
@@ -174,7 +179,6 @@ export default function MindMapInspector({ isOpen, onClose }: MindMapInspectorPr
               )}
             </div>
           </div>
-        </div>
       </div>
     </div>
   );
