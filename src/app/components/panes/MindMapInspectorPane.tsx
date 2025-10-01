@@ -50,7 +50,7 @@ export default function MindMapInspectorPane({ isOpen, onClose, onAnalyzeNow }: 
   }, [feed.length]);
 
   const selected = selectedIndex !== null ? feed[selectedIndex] : undefined;
-  const diffLines = React.useMemo(() => describeDiff(selected?.diff), [selected]);
+  const diffLines = React.useMemo<string[]>(() => describeDiff(selected?.diff), [selected]);
 
   if (!isOpen) return null;
 
@@ -216,25 +216,37 @@ function buildFeed(loggedEvents: any[]): FeedItem[] {
   return results.slice(-100);
 }
 
-function describeDiff(diff: any | undefined) {
-  if (!diff) return [] as string[];
-  const ops = Array.isArray(diff?.ops) ? diff.ops : [];
-  return ops.map((raw: any, index: number) => {
+function describeDiff(diff: { ops?: unknown[] } | undefined): string[] {
+  if (!diff) return [];
+  const ops = Array.isArray(diff.ops) ? diff.ops : [];
+  const lines: string[] = [];
+
+  ops.forEach((raw, index) => {
     const op = normalizeMindMapOp(raw);
-    if (!op) return `#${index}: (invalid op)`;
+    if (!op) {
+      lines.push(`#${index}: (invalid op)`);
+      return;
+    }
+
     switch (op.type) {
       case "add_node":
-        return `+ node: ${op.label}`;
+        lines.push(`+ node: ${op.label}`);
+        break;
       case "update_node":
-        return `~ node: ${op.label}`;
+        lines.push(`~ node: ${op.label}`);
+        break;
       case "add_edge":
-        return `+ edge: ${op.sourceLabel} —${op.relation || "related"}→ ${op.targetLabel}`;
+        lines.push(`+ edge: ${op.sourceLabel} —${op.relation || "related"}→ ${op.targetLabel}`);
+        break;
       case "remove_edge":
-        return `- edge: ${op.sourceLabel} —${op.relation || "related"}→ ${op.targetLabel}`;
+        lines.push(`- edge: ${op.sourceLabel} —${op.relation || "related"}→ ${op.targetLabel}`);
+        break;
       default:
-        return `#${index}: ${op.type || "unknown"}`;
+        lines.push(`#${index}: ${op.type || "unknown"}`);
     }
   });
+
+  return lines;
 }
 
 function stringify(value: any) {
