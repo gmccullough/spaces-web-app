@@ -117,7 +117,7 @@ export async function loadMindMapSnapshot(userId: string, spaceName: string): Pr
     if ((error as any)?.status === 404) return null;
     throw error;
   }
-  const text = await (await data.blob()).text();
+  const text = await data.text();
   try { return JSON.parse(text); } catch { return null; }
 }
 
