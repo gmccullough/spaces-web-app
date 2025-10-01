@@ -53,7 +53,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { name: stri
       const { error: moveError } = await supabase.storage.from(STORAGE_BUCKET).move(fromPath, toPath);
       if (moveError) {
         console.error('[PATCH /api/spaces/[name]] move failed', { fromPath, toPath, moveError });
-        return NextResponse.json({ error: { code: moveError.name || 'MOVE_FAILED', message: moveError.message } }, { status: moveError.status || 500 });
+        const status = (moveError as any)?.status || 500;
+        const code = moveError.name || 'MOVE_FAILED';
+        return NextResponse.json({ error: { code, message: moveError.message } }, { status });
       }
     }
 
