@@ -216,13 +216,15 @@ function buildFeed(loggedEvents: any[]): FeedItem[] {
   return results.slice(-100);
 }
 
-function describeDiff(diff: { ops?: unknown[] } | undefined): string[] {
+type DiffLike = { ops?: unknown[] } | undefined;
+
+function describeDiff(diff: DiffLike): string[] {
   if (!diff) return [];
   const ops = Array.isArray(diff.ops) ? diff.ops : [];
   const lines: string[] = [];
 
   ops.forEach((raw, index) => {
-    const op = normalizeMindMapOp(raw);
+    const op = normalizeMindMapOp(raw as Record<string, unknown> | null | undefined);
     if (!op) {
       lines.push(`#${index}: (invalid op)`);
       return;
