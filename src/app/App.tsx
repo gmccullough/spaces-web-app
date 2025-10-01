@@ -628,7 +628,6 @@ function AppInner() {
           onInputDeviceChange={setSelectedInputDeviceId}
           onLogoClick={() => window.location.reload()}
           onLogout={handleLogout}
-          onAnalyzeNow={analyzeNow}
         />
       </div>
 
