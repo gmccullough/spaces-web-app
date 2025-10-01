@@ -63,6 +63,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         break;
       }
       case "response.audio_transcript.delta": {
+        callbacks.onSpeechStarted?.();
         historyHandlers.handleTranscriptionDelta(event);
         break;
       }
