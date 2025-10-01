@@ -28,14 +28,14 @@
 - [ ] Undo; separate node/edge files; delta logs (may add later)
 
 ### Success Criteria
-- [ ] After each turn, an OOB `response.create` is issued with `conversation: "none"` and `response_format: json_schema (mindmap_diff_v1)`
-- [ ] Diffs are applied only after the terminal completion event for that `response.id`; partial chunks are buffered/ignored
-- [ ] Single in-flight OOB per space is enforced with debounce; older in-flight OOB is cancelled/superseded on new turn
-- [ ] The Inspector shows the exact context payload (bounded window + optional summary), the human-readable diff, and raw JSON with `response.id`
-- [ ] Viewer updates from applied diffs without blocking the main assistant reply or requiring reload
+- [x] After each turn, an OOB `response.create` is issued with `conversation: "none"`; diffs are validated client-side against `mindmap_diff_v1`
+- [x] Diffs are applied only after the terminal completion event for that `response.id`; partial chunks are buffered/ignored
+- [x] Single in-flight OOB per space is enforced with debounce; older in-flight OOB is cancelled/superseded on new turn
+- [x] The Inspector shows the exact context payload (bounded window + optional summary), the human-readable diff, and raw JSON with `response.id`
+- [x] Viewer updates from applied diffs without blocking the main assistant reply or requiring reload
 - [ ] On prompt after 5 diffs or user command, snapshot is persisted to `mindmap.json` with stable IDs and updated timestamp
 - [ ] On new conversation in same space, prior `mindmap.json` loads and informs OOB concept-matching
-- [ ] Channel filtering ensures only events for the active space are applied
+- [x] Channel filtering ensures only events for the active space are applied
 
 ---
 
@@ -112,13 +112,13 @@
   - **Context**: Moves from manual to continuous OOB updates safely
 
 ### Phase 3: Viewer & File Explorer Integration
-- [ ] **Create** **MindMapViewer** - Zoom-only mind map renderer
+- [x] **Create** **MindMapViewer** - Zoom-only mind map renderer
   - **Files**: `src/app/components/MindMapViewer.tsx` (new)
   - **Dependencies**: `react-force-graph` (or alternative), mind map state hook
   - **Validation**: Renders nodes/edges; supports zoom in/out; updates on diffs
   - **Context**: Lightweight visualization without interactivity
 
-- [ ] **Add** **Special File Link** - "Mind Map" virtual entry in explorer
+- [x] **Add** **Special File Link** - "Mind Map" virtual entry in explorer
   - **Files**: `src/app/components/SpacesFileTree.tsx`, `src/app/components/SpacesFileViewer.tsx`
   - **Dependencies**: Viewer component; routing to right-side preview
   - **Validation**: Clicking "Mind Map" shows viewer in preview pane for the active space
@@ -350,51 +350,3 @@ Note: We are in dev; minimal automated testing now, but include basic coverage a
   - Files: `src/app/hooks/useSpacesMindMap.ts`, tests under `tests/spaces/`
   - Edge dedupe via keyed set; label-collision policy; hydrate/reset helpers
   - Validate diffs against `mindMapDiffJsonSchema` before apply
-
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant U as User
-  participant UI as App UI (Toolbar/Transcript)
-  participant EC as Event Log (`EventContext`)
-  participant RT as Realtime Session (SDK)
-  participant S as Realtime Server
-  participant OOB as `useMindMapOOB`
-  participant MM as `useSpacesMindMap` (Reducer)
-  participant INS as `MindMapInspector`
-
-  U->>UI: Speak / Type message
-  UI->>RT: Send user text or PTT events
-  UI->>EC: logClientEvent(conversation.item.*, response.create)
-
-  RT->>S: Default conversation request
-  S-->>RT: response.delta (streaming text/audio)
-  RT->>EC: logServerEvent(response.delta) (suppressed in UI by default)
-  S-->>RT: response.done (default channel)
-  RT->>EC: logServerEvent(response.done)
-
-  rect rgb(245,245,255)
-  note over OOB: OOB trigger (debounced)
-  EC-->>OOB: Observe final transcript update OR default response.done
-  OOB->>OOB: Debounce single in-flight with supersede (oobCorrelationId)
-  OOB->>RT: response.create { conversation: "none", metadata: { channel: "spaces-mindmap", spaceName, oobCorrelationId } }
-  OOB->>EC: logClientEvent(analyze_now, oob.analyze_start/supersede)
-  end
-
-  RT->>S: OOB request (no default conversation contamination)
-  S-->>RT: response.delta (OOB)
-  RT->>EC: logServerEvent(response.delta) (suppressed in UI by default)
-  S-->>RT: response.done (channel: spaces-mindmap, oobCorrelationId)
-  RT->>EC: logServerEvent(response.done)
-
-  EC-->>OOB: Observe OOB response.done
-  OOB->>OOB: Filter by channel/space check oobCorrelationId matches current
-  OOB->>OOB: Parse JSON client-side validate against `mindMapDiffJsonSchema`
-  OOB->>MM: applyDiff(diff.ops)
-  OOB->>EC: logClientEvent(oob.applied)
-  OOB->>OOB: Clear in-flight if correlation matches
-
-  EC-->>INS: Feed updates (Context/Diff/JSON)
-  INS->>UI: Render activity feed & tabs
-```

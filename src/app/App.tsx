@@ -13,6 +13,7 @@ import SpacesFilesPanel from "./components/SpacesFilesPanel";
 import MindMapInspector from "./components/MindMapInspector";
 import SpacePickerModal from "./components/SpacePickerModal";
 import { SpaceSelectionProvider, useSpaceSelection } from "./contexts/SpaceSelectionContext";
+import { MindMapProvider } from "./contexts/MindMapContext";
 
 // Types
 import { SessionStatus } from "@/app/types";
@@ -686,10 +687,12 @@ function AppInner() {
 function App() {
   return (
     <SpaceSelectionProvider>
-      <ModalPortalWrapper />
-      <HideUIUntilSelection>
-        <AppInner />
-      </HideUIUntilSelection>
+      <MindMapProvider>
+        <ModalPortalWrapper />
+        <HideUIUntilSelection>
+          <AppInner />
+        </HideUIUntilSelection>
+      </MindMapProvider>
     </SpaceSelectionProvider>
   );
 }

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useSpacesFileTree } from "@/app/hooks/useSpacesFileTree";
+import { SPACES_MINDMAP_CHANNEL } from "@/app/lib/spaces/types";
 
 type Props = {
   spaceName?: string;
@@ -25,7 +26,12 @@ export default function SpacesFileTree({ spaceName, onSelectPath }: Props) {
 
   const root = getDirState("");
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const items = root.nodes || [];
+  const items = React.useMemo(() => {
+    const base = root.nodes || [];
+    const specialMindMap = { path: "__mindmap__", name: "Mind Map", isDirectory: false } as any;
+    // Prepend special entry at root
+    return [specialMindMap, ...base];
+  }, [root.nodes]);
 
   const moveSelection = (delta: number) => {
     if (!items.length) return;
@@ -44,6 +50,7 @@ export default function SpacesFileTree({ spaceName, onSelectPath }: Props) {
 
   const isDirectoryPath = (p: string | null): boolean => {
     if (!p) return false;
+    if (p === "__mindmap__") return false;
     const parent = getParentDir(p);
     const parentState = getDirState(parent || "");
     const name = p.substring(p.lastIndexOf('/') + 1);
@@ -166,6 +173,15 @@ function TreeDir({ dir, getDirState, ensureDir, expandedDirs, toggleExpand, sele
           </div>
         </li>
       ))}
+      {/* Special virtual entry */}
+      {dir === "" && (
+        <li key="__mindmap__">
+          <div role="treeitem" aria-selected={selectedPath === "__mindmap__"} className={`px-2 py-1 rounded cursor-pointer ${selectedPath === "__mindmap__" ? 'bg-blue-50' : ''}`} onClick={() => { setSelectedPath("__mindmap__"); onSelectPath?.("__mindmap__"); }}>
+            <span className="mr-1">🧠</span>
+            Mind Map
+          </div>
+        </li>
+      )}
     </ul>
   );
 }

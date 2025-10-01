@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useSpacesFileContent } from "@/app/hooks/useSpacesFileContent";
+import MindMapViewer from "@/app/components/MindMapViewer";
 
 type Props = {
   spaceName?: string;
@@ -16,6 +17,9 @@ export default function SpacesFileViewer({ spaceName, path }: Props) {
   }
   if (!path) {
     return <div className="p-3 text-sm text-gray-500">Select a file to preview.</div>;
+  }
+  if (path === "__mindmap__") {
+    return <MindMapViewer spaceName={spaceName} />;
   }
   if (loading) {
     return <div className="p-3 text-sm text-gray-500">Loading…</div>;

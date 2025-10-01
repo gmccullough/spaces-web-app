@@ -4,7 +4,7 @@ import React from "react";
 import { useEvent } from "@/app/contexts/EventContext";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useSpaceSelection } from "@/app/contexts/SpaceSelectionContext";
-import { useSpacesMindMap } from "./useSpacesMindMap";
+import { useMindMap } from "@/app/contexts/MindMapContext";
 import { SPACES_MINDMAP_CHANNEL, MINDMAP_DEBOUNCE_MS, MINDMAP_INFLIGHT_TIMEOUT_MS, MINDMAP_MAX_CONTEXT_TURNS, buildMindMapOOBRequest } from "@/app/lib/spaces/types";
 import { v4 as uuidv4 } from "uuid";
 import { getResponseChannel, getResponseSpace, getResponseId, parseResponseJson } from "@/app/lib/realtime/parsers";
@@ -19,7 +19,7 @@ export function useMindMapOOB(options: UseMindMapOOBOptions) {
   const { transcriptItems, addTranscriptBreadcrumb } = useTranscript();
   const { loggedEvents, logClientEvent } = useEvent();
   const { selectedSpaceName } = useSpaceSelection();
-  const mindMap = useSpacesMindMap();
+  const mindMap = useMindMap();
 
   const inFlightRef = React.useRef<boolean>(false);
   const analyzeTimeoutRef = React.useRef<number | null>(null);
