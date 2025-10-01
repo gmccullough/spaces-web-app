@@ -33,8 +33,8 @@
 - [x] Single in-flight OOB per space is enforced with debounce; older in-flight OOB is cancelled/superseded on new turn
 - [x] The Inspector shows the exact context payload (bounded window + optional summary), the human-readable diff, and raw JSON with `response.id`
 - [x] Viewer updates from applied diffs without blocking the main assistant reply or requiring reload
-- [ ] On prompt after 5 diffs or user command, snapshot is persisted to `mindmap.json` with stable IDs and updated timestamp
-- [ ] On new conversation in same space, prior `mindmap.json` loads and informs OOB concept-matching
+- [x] On prompt after 5 diffs or user command, snapshot is persisted to `mindmap.json` with stable IDs and updated timestamp
+- [x] On new conversation in same space, prior `mindmap.json` loads and informs OOB concept-matching
 - [x] Channel filtering ensures only events for the active space are applied
 
 ---
@@ -114,7 +114,7 @@
 ### Phase 3: Viewer & File Explorer Integration
 - [x] **Create** **MindMapViewer** - Zoom-only mind map renderer
   - **Files**: `src/app/components/MindMapViewer.tsx` (new)
-  - **Dependencies**: `react-force-graph` (or alternative), mind map state hook
+  - **Dependencies**: `react-force-graph-2d` (or alternative), mind map state hook
   - **Validation**: Renders nodes/edges; supports zoom in/out; updates on diffs
   - **Context**: Lightweight visualization without interactivity
 
@@ -133,24 +133,24 @@
   - **Validation**: Can serialize/deserialize snapshot; includes `schema_version: "1"`, `space_name`, `updated_at`, `nodes[]`, `edges[]`
   - **Context**: Persist as single file per space
 
-- [ ] **Extend** **Spaces Paths & Storage** - Mind map file utilities
+- [x] **Extend** **Spaces Paths & Storage** - Mind map file utilities
   - **Files**: `src/app/lib/spaces/paths.ts`, `src/app/lib/spaces/storage.ts`
   - **Dependencies**: Supabase client utils
   - **Validation**: `getMindMapPath(spaceName)` returns `spaces/<space-name>/mindmap/mindmap.json`
   - **Context**: Centralized pathing for consistency
-- [ ] **Track** **Diff Count & Prompt** - Ask after 5 diffs
+- [x] **Track** **Diff Count & Prompt** - Ask after 5 diffs
   - **Files**: `src/app/hooks/useSpacesMindMap.ts` (diff counter), `src/app/hooks/useRealtimeSession.ts` (agent ask)
   - **Dependencies**: OOB/assistant messaging patterns
   - **Validation**: After 5 applied diffs, agent asks: "Save these ideas?"
   - **Context**: Non-blocking; user can dismiss/ignore
 
-- [ ] **Implement** **Save Command** - Consolidate and persist snapshot
+- [x] **Implement** **Save Command** - Consolidate and persist snapshot
   - **Files**: `src/app/hooks/useSpacesMindMap.ts` (consolidation), `src/app/lib/spaces/storage.ts` (persist)
   - **Dependencies**: Supabase storage (If-Match/ETag), current snapshot load
   - **Validation**: Assign stable IDs, write `mindmap.json`, refresh in-memory from saved snapshot
   - **Context**: Single authoritative snapshot; create file if missing by default
 
-- [ ] **Load** **Snapshot at Space Open** - Initialize state and OOB context
+- [x] **Load** **Snapshot at Space Open** - Initialize state and OOB context
   - **Files**: `src/app/hooks/useSpacesMindMap.ts`, `src/app/lib/spaces/storage.ts`
   - **Dependencies**: Path/storage helpers
   - **Validation**: On space activation, load `mindmap.json` if present and hydrate state; include distilled snapshot in subsequent OOB context

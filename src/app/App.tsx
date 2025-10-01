@@ -21,10 +21,10 @@ import type { RealtimeAgent } from '@openai/agents/realtime';
 
 // Context providers & hooks
 import { useTranscript } from "@/app/contexts/TranscriptContext";
-import { mindMapDiffJsonSchema } from "@/app/lib/spaces/types";
+// removed unused import mindMapDiffJsonSchema
 import { useEvent } from "@/app/contexts/EventContext";
 import { useRealtimeSession } from "./hooks/useRealtimeSession";
-import { useSpacesMindMap } from "./hooks/useSpacesMindMap";
+// mind map state is provided via context; no direct import needed here
 import { useMindMapOOB } from "./hooks/useMindMapOOB";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
@@ -60,13 +60,8 @@ function AppInner() {
   // Agents SDK doesn't currently support codec selection so it is now forced 
   // via global codecPatch at module load 
 
-  const {
-    transcriptItems,
-    addTranscriptMessage,
-    addTranscriptBreadcrumb,
-  } = useTranscript();
-  const mindMap = useSpacesMindMap();
-  const { loggedEvents, logClientEvent, logServerEvent } = useEvent();
+  const { addTranscriptMessage, addTranscriptBreadcrumb } = useTranscript();
+  const { logClientEvent, logServerEvent } = useEvent();
 
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<

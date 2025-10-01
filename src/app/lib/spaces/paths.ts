@@ -33,3 +33,9 @@ export function invalidPath(message: string) {
 }
 
 
+
+// Mind Map helpers
+export function getMindMapRelativePath(): string {
+  return `mindmap/mindmap.json`;
+}
+

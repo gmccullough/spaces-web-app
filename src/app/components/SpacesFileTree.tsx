@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useSpacesFileTree } from "@/app/hooks/useSpacesFileTree";
-import { SPACES_MINDMAP_CHANNEL } from "@/app/lib/spaces/types";
+// no channel constant needed in this component
 
 type Props = {
   spaceName?: string;

@@ -1,6 +1,7 @@
 import { createServerSupabase } from "@/app/lib/supabase/server";
 import { FileEntry, PutOptions, WriteFileResponse } from "./types";
-import { normalizeRelativePath } from "./paths";
+import { normalizeRelativePath, resolveSpacePrefix, getMindMapRelativePath } from "./paths";
+import type { MindMapState } from "@/app/hooks/useSpacesMindMap";
 
 export const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "spaces";
 const DEFAULT_MAX_BYTES = Number(process.env.SUPABASE_MAX_OBJECT_BYTES || 5 * 1024 * 1024);
@@ -108,4 +109,25 @@ export async function putFile(objectKey: string, body: ArrayBuffer | Uint8Array,
   return { path: objectKey, size: payload.byteLength, contentType, etag: (uploadResult as any)?.etag };
 }
 
+
+export async function loadMindMapSnapshot(userId: string, spaceName: string): Promise<any | null> {
+  const supabase = await createServerSupabase();
+  const key = resolveSpacePrefix(userId, spaceName) + getMindMapRelativePath();
+  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(key);
+  if (error) {
+    if ((error as any)?.status === 404) return null;
+    throw error;
+  }
+  const text = await (await data.blob()).text();
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+export async function saveMindMapSnapshot(userId: string, spaceName: string, snapshot: any): Promise<WriteFileResponse> {
+  const supabase = await createServerSupabase();
+  const key = resolveSpacePrefix(userId, spaceName) + getMindMapRelativePath();
+  const bytes = new TextEncoder().encode(JSON.stringify(snapshot, null, 2));
+  const { data: uploadResult, error } = await supabase.storage.from(STORAGE_BUCKET).upload(key, bytes, { contentType: 'application/json', upsert: true });
+  if (error) throw error;
+  return { path: key, size: bytes.byteLength, contentType: 'application/json', etag: (uploadResult as any)?.etag };
+}
 

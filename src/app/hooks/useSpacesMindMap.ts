@@ -27,6 +27,7 @@ export function useSpacesMindMap() {
   const [state, setState] = React.useState<MindMapState>(() => ({ nodesByLabel: {}, edges: [] }));
   const [diffCount, setDiffCount] = React.useState<number>(0);
   const edgeKeySetRef = React.useRef<Set<string>>(new Set());
+  const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null);
 
   const applyDiff = React.useCallback((diff: MindMapDiff) => {
     if (!diff || !Array.isArray(diff.ops)) return;
@@ -57,13 +58,14 @@ export function useSpacesMindMap() {
     }
     setState(next);
     setDiffCount(0);
+    setLastSavedAt(new Date().toISOString());
   }, []);
 
-  return { state, applyDiff, diffCount, resetDiffCount, hydrateFromSnapshot } as const;
+  return { state, applyDiff, diffCount, resetDiffCount, hydrateFromSnapshot, lastSavedAt } as const;
 }
 
 function applyOps(prev: MindMapState, ops: MindMapOp[], edgeKeySet?: Set<string>): MindMapState {
-  let next = { ...prev, nodesByLabel: { ...prev.nodesByLabel }, edges: [...prev.edges] };
+  const next = { ...prev, nodesByLabel: { ...prev.nodesByLabel }, edges: [...prev.edges] };
   const keys = edgeKeySet ?? new Set<string>(next.edges.map((e) => edgeKey(e.sourceLabel, e.targetLabel, e.relation)));
   for (const raw of ops) {
     const op = normalizeOp(raw);
