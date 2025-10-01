@@ -1,12 +1,20 @@
 import { createServerSupabase } from "@/app/lib/supabase/server";
+import { getServiceRoleSupabase } from '@/app/lib/supabase/serviceRole';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { FileEntry, PutOptions, WriteFileResponse } from "./types";
 import { normalizeRelativePath, resolveSpacePrefix, getMindMapRelativePath } from "./paths";
 
 export const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "spaces";
 const DEFAULT_MAX_BYTES = Number(process.env.SUPABASE_MAX_OBJECT_BYTES || 5 * 1024 * 1024);
 
+async function getStorageClient(): Promise<SupabaseClient> {
+  const admin = getServiceRoleSupabase();
+  if (admin) return admin;
+  return await createServerSupabase();
+}
+
 export async function listFiles(prefix: string, opts?: { dir?: string; recursive?: boolean }): Promise<FileEntry[]> {
-  const supabase = await createServerSupabase();
+  const supabase = await getStorageClient();
   const dir = opts?.dir ? normalizeRelativePath(opts.dir) + "/" : "";
   const base = prefix + dir;
 
@@ -69,7 +77,7 @@ export async function listFiles(prefix: string, opts?: { dir?: string; recursive
 }
 
 export async function getFile(objectKey: string): Promise<{ bytes: ArrayBuffer; contentType?: string }> {
-  const supabase = await createServerSupabase();
+  const supabase = await getStorageClient();
   const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(objectKey);
   if (error) throw error;
   const arrayBuffer = await data.arrayBuffer();
@@ -90,7 +98,7 @@ export async function putFile(objectKey: string, body: ArrayBuffer | Uint8Array,
     err.code = "REQUEST_TOO_LARGE";
     throw err;
   }
-  const supabase = await createServerSupabase();
+  const supabase = await getStorageClient();
 
   if (opts?.ifNoneMatch === '*') {
     const { data: existsData } = await supabase.storage.from(STORAGE_BUCKET).list(objectKey.substring(0, objectKey.lastIndexOf('/') + 1));
@@ -110,7 +118,7 @@ export async function putFile(objectKey: string, body: ArrayBuffer | Uint8Array,
 
 
 export async function loadMindMapSnapshot(userId: string, spaceName: string): Promise<any | null> {
-  const supabase = await createServerSupabase();
+  const supabase = await getStorageClient();
   const key = resolveSpacePrefix(userId, spaceName) + getMindMapRelativePath();
   const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(key);
   if (error) {
