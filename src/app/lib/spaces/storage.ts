@@ -129,4 +129,3 @@ export async function saveMindMapSnapshot(userId: string, spaceName: string, sna
   if (error) throw error;
   return { path: key, size: bytes.byteLength, contentType: 'application/json', etag: (uploadResult as any)?.etag };
 }
-

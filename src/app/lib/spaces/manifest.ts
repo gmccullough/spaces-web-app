@@ -97,4 +97,3 @@ export async function bumpManifestLastUpdated(userId: string, spaceName: string)
     // Best-effort bump; ignore errors
   }
 }
-

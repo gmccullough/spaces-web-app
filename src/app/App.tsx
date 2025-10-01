@@ -558,10 +558,11 @@ function AppInner() {
     if (sessionStatus === 'CONNECTED' && hasMadeInitialSelection && selectedSpaceName !== null) {
       addTranscriptBreadcrumb(`Space: ${selectedSpaceName || 'Just talk'}`);
       if (selectedSpaceName) {
-        sendSimulatedUserMessage(`Switch to the Space "${selectedSpaceName}" for file operations.`);
+        const displayName = currentSpaceManifest?.name || selectedSpaceName;
+        sendSimulatedUserMessage(`Switch to the Space "${displayName}" for file operations.`);
       }
     }
-  }, [selectedSpaceName]);
+  }, [selectedSpaceName, currentSpaceManifest]);
 
   useEffect(() => {
     if (!hasMadeInitialSelection) return;
@@ -582,9 +583,10 @@ function AppInner() {
     if (!selectedSpaceName) return;
     if (pendingRenamePromptRef.current !== selectedSpaceName) return;
 
-    sendSimulatedUserMessage(`The current Space "${selectedSpaceName}" was auto-named when it was created. Please ask the user if they'd like to rename it. If they share a new name, call the rename_space tool to update it.`);
+    const displayName = currentSpaceManifest?.name || selectedSpaceName;
+    sendSimulatedUserMessage(`The current Space "${displayName}" was auto-named when it was created. Ask the user if they'd like to rename it. If they provide a new name, call the rename_space tool with currentName="${selectedSpaceName}" and newName set to their suggestion.`);
     pendingRenamePromptRef.current = null;
-  }, [selectedSpaceName, sessionStatus]);
+  }, [selectedSpaceName, sessionStatus, currentSpaceManifest]);
 
   const handleSendTextMessage = () => {
     if (!userText.trim()) return;
