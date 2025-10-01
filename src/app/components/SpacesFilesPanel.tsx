@@ -69,13 +69,13 @@ export default function SpacesFilesPanel({ children }: SpacesFilesPanelProps) {
   }, [spaceName, selectedPath]);
   return (
     <div className="flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-6 py-3 border-b bg-white sticky top-0 z-10 flex items-center justify-between">
+      <div className="px-6 py-3 border-b bg-white sticky top-0 z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
           <button className="text-gray-900 font-semibold hover:underline" onClick={openPicker}>Spaces</button>
           <span className="text-gray-400">&gt;</span>
           <span className="truncate" title={spaceName || 'Just talk'}>{spaceName || 'Just talk'}</span>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center mt-2 md:mt-0">
           <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
             <button
               className={(viewMode === 'mindmap' ? "bg-gray-800 text-white" : "bg-white text-gray-700") + " px-3 py-1 flex items-center"}

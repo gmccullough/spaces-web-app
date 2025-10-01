@@ -86,7 +86,7 @@ export default function SpacePickerModal({ isOpen, isBlocking, onSelectJustTalk,
         className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 z-10"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 id="space-picker-title" className="text-xl font-semibold mb-4 text-gray-900">Pick a Space</h2>
+        <h2 id="space-picker-title" className="text-xl font-semibold mb-4 text-gray-900 text-center">Choose a Space</h2>
 
         <div className="mb-4">
           <button
@@ -94,7 +94,7 @@ export default function SpacePickerModal({ isOpen, isBlocking, onSelectJustTalk,
             className="w-full py-3 text-base font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={onSelectJustTalk}
           >
-            Just talk
+            New Space
           </button>
         </div>
 
@@ -108,27 +108,29 @@ export default function SpacePickerModal({ isOpen, isBlocking, onSelectJustTalk,
 
         {!loading && !error && items.length > 0 && (
           <div role="list" aria-label="Spaces" className="max-h-72 overflow-auto">
-            {items.map((it) => (
-              <button
-                key={it.name}
-                role="listitem"
-                className="w-full px-3 py-2 my-2 rounded-md bg-blue-50 text-gray-800 font-medium text-center hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                title={it.name}
-                onClick={() => onSelectSpace(it.name)}
-                data-testid={`space-${it.name}`}
-              >
-                <span className="truncate inline-block max-w-full">{truncateName(it.name)}</span>
-              </button>
-            ))}
+            <div className="flex flex-col space-y-px">
+              {items.map((it) => (
+                <button
+                  key={it.name}
+                  role="listitem"
+                  className="w-full px-3 py-2 bg-gray-50 text-gray-800 font-medium text-left hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-none first:rounded-t-md last:rounded-b-md"
+                  title={it.name}
+                  onClick={() => onSelectSpace(it.name)}
+                  data-testid={`space-${it.name}`}
+                >
+                  <span className="truncate inline-block max-w-full">{truncateName(it.name)}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {!loading && !error && items.length === 0 && (
-          <div className="text-gray-600">No spaces yet. Use &quot;Just talk&quot; to begin.</div>
+          <div className="text-gray-600">No spaces yet. Use &quot;New Space&quot; to begin.</div>
         )}
 
         {!isBlocking && (
-          <div className="mt-4 text-right">
+          <div className="mt-4 text-center">
             <button
               onClick={() => {
                 const ev = new CustomEvent('spaces:closePicker');

@@ -12,7 +12,7 @@ type Props = {
 };
 
 export default function MindMapViewer({ spaceName, fullBleed = false }: Props) {
-  const { state, saveSnapshot } = useMindMap();
+  const { state } = useMindMap();
   const nodes = React.useMemo(() => Object.values(state.nodesByLabel).map(n => ({ id: n.label, label: n.label, salience: n.displaySalience ?? n.salience ?? 5 })), [state.nodesByLabel]);
   const nodeIdSet = React.useMemo(() => new Set(nodes.map(n => n.id as string)), [nodes]);
   const links = React.useMemo(() => state.edges
@@ -54,10 +54,6 @@ export default function MindMapViewer({ spaceName, fullBleed = false }: Props) {
 
   return (
     <div className={containerClass}>
-      <div className="mb-2 text-gray-700 text-sm px-1 flex items-center justify-between">
-        <span>Mind Map{spaceName ? ` for ${spaceName}` : ''}</span>
-        <button className="text-xs px-2 py-1 border rounded hover:bg-gray-50" onClick={() => { try { saveSnapshot(); } catch {} }}>Save Mind Map</button>
-      </div>
       {nodes.length > 0 && (
       <ForceGraph2D
         graphData={data as any}

@@ -30,11 +30,21 @@ function Transcript({
   const [prevLogs, setPrevLogs] = useState<TranscriptItem[]>([]);
   const [justCopied, setJustCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [showSystem, setShowSystem] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const v = localStorage.getItem('transcriptShowSystem');
+    return v ? v === 'true' : false;
+  });
 
   function scrollToBottom() {
     if (transcriptRef.current) {
       transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
     }
+  }
+
+  function rafScrollToBottom() {
+    if (typeof window === 'undefined') return;
+    requestAnimationFrame(() => scrollToBottom());
   }
 
   useEffect(() => {
@@ -48,7 +58,7 @@ function Transcript({
     });
 
     if (hasNewMessage || hasUpdatedMessage) {
-      scrollToBottom();
+      rafScrollToBottom();
     }
 
     setPrevLogs(transcriptItems);
@@ -60,6 +70,15 @@ function Transcript({
       inputRef.current.focus();
     }
   }, [canSend]);
+
+  useEffect(() => {
+    try { localStorage.setItem('transcriptShowSystem', showSystem.toString()); } catch {}
+  }, [showSystem]);
+
+  // Ensure we auto-scroll when the filter changes
+  useEffect(() => {
+    rafScrollToBottom();
+  }, [showSystem]);
 
   const handleCopyTranscript = async () => {
     if (!transcriptRef.current) return;
@@ -76,12 +95,26 @@ function Transcript({
     ? "flex flex-col flex-1 bg-white min-h-[50vh] md:min-h-0 rounded-xl max-h-[400px] overflow-hidden"
     : "w-0 md:w-0 overflow-hidden opacity-0";
 
+  const visibleItems = React.useMemo(() => {
+    if (showSystem) return transcriptItems;
+    return transcriptItems.filter((item) => {
+      if (item.type !== "MESSAGE") return false;
+      const hasText = (item.title || "").trim().length > 0;
+      const isUserOrAssistant = (item as any).role === 'user' || (item as any).role === 'assistant';
+      return isUserOrAssistant && hasText;
+    });
+  }, [transcriptItems, showSystem]);
+
   return (
     <div className={containerClass}>
       <div className="flex flex-col flex-1 min-h-0">
-        <div className="flex items-center justify-between px-6 py-3 sticky top-0 z-10 text-base border-b bg-white rounded-t-xl">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 px-6 py-3 sticky top-0 z-10 text-base border-b bg-white rounded-t-xl">
           <span className="font-semibold">Transcript</span>
-          <div className="flex gap-x-2">
+          <div className="flex items-center gap-x-3 mt-2 md:mt-0">
+            <label className="flex items-center gap-1 text-sm cursor-pointer">
+              <input type="checkbox" checked={showSystem} onChange={(e)=>setShowSystem(e.target.checked)} />
+              <span>Show system</span>
+            </label>
             <button
               onClick={handleCopyTranscript}
               className="w-24 text-sm px-3 py-1 rounded-md bg-gray-200 hover:bg-gray-300 flex items-center justify-center gap-x-1"
@@ -104,7 +137,7 @@ function Transcript({
           ref={transcriptRef}
           className="overflow-auto p-4 flex flex-col gap-y-4 h-full"
         >
-          {[...transcriptItems]
+          {[...visibleItems]
             .sort((a, b) => a.createdAtMs - b.createdAtMs)
             .map((item) => {
               const {
