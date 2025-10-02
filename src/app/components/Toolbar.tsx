@@ -208,9 +208,9 @@ function TalkButton({ isVisible, isSpeaking, disabled, onPress, onRelease }: Tal
 
   const label = isSpeaking ? "Release to send" : "Hold to talk";
   const classes = cn(
-    "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+    "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500",
     disabled && "cursor-not-allowed opacity-60",
-    !disabled && (isSpeaking ? "bg-blue-700 text-white" : "bg-blue-600 text-white hover:bg-blue-700")
+    !disabled && (isSpeaking ? "bg-green-700 text-white" : "bg-green-600 text-white hover:bg-green-700")
   );
 
   return (
